@@ -2,23 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use DataTables; 
+use DataTables;
 use Carbon\Carbon;
-use App\Models\User; 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
-use Laravel\Ui\Presets\React;
 use Spatie\Permission\Models\Role;
 
 class UsersController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Mostrar una lista del recurso.
      *
      * @return \Illuminate\Http\Response
      */
     public function index(Request $request)
-    {        
+    {
         if($request->ajax())
         {
             return $this->getUsers();
@@ -27,7 +26,7 @@ class UsersController extends Controller
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Mostrar el formulario para crear un nuevo recurso.
      *
      * @return \Illuminate\Http\Response
      */
@@ -37,7 +36,7 @@ class UsersController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Almacenar un recurso recién creado en el almacenamiento.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
@@ -45,26 +44,26 @@ class UsersController extends Controller
     public function store(Request $request, User $user)
     {
         $this->validate($request, [
-            'name' => 'required', 
+            'name' => 'required',
             'email' => 'required|email:rfc,dns|unique:users,email'
         ]);
         if($request->has('roles'))
         {
             $user->create($request->all())->roles()->sync($request->roles);
-        }else{            
+        }else{
             $user->create($request->all());
         }
         if($user)
         {
-            toast('New User Created Successfully.','success');
+            toast('Nuevo usuario creado con éxito.','success');
             return Redirect::to('users');
         }
-        toast('Error Creating New User','error');
+        toast('Error al crear un nuevo usuario','error');
         return back()->withInput();
     }
 
     /**
-     * Display the specified resource.
+     * Mostrar el recurso especificado.
      *
      * @param  int  $id
      * @return \Illuminate\Http\Response
@@ -75,7 +74,7 @@ class UsersController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Mostrar el formulario para editar el recurso especificado.
      *
      * @param  int  $id
      * @return \Illuminate\Http\Response
@@ -83,14 +82,14 @@ class UsersController extends Controller
     public function edit(User $user)
     {
         return view('users.edit', [
-            "user" => $user, 
-            "userRole" => $user->roles->pluck('name')->toArray(), 
+            "user" => $user,
+            "userRole" => $user->roles->pluck('name')->toArray(),
             "roles" => Role::latest()->get()
         ]);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Actualizar el recurso especificado en el almacenamiento.
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
@@ -99,25 +98,24 @@ class UsersController extends Controller
     public function update(Request $request, User $user)
     {
         $this->validate($request, [
-            'name' => 'required', 
+            'name' => 'required',
             'email' => 'required|email:rfc,dns|unique:users,email,'.$user->id,
-        ]); 
-        
+        ]);
+
         $user->update($request->all());
         $user->roles()->sync($request->input('roles'));
 
         if($user)
         {
-            toast('User Updated Successfully.','success');
+            toast('Usuario actualizado con éxito.','success');
             return Redirect::to('users');
         }
-        toast('Error in User Update','error');
+        toast('Error al actualizar el usuario','error');
         return back()->withInput();
-
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Eliminar el recurso especificado del almacenamiento.
      *
      * @param  int  $id
      * @return \Illuminate\Http\Response
@@ -126,9 +124,9 @@ class UsersController extends Controller
     {
         if($request->ajax() && $user->delete())
         {
-            return response(["message" => "User Deleted Successfully"], 200);
+            return response(["message" => "Usuario eliminado con éxito"], 200);
         }
-        return response(["message" => "Data Delete Error! Please Try again"], 201);
+        return response(["message" => "¡Error al eliminar los datos! Por favor, inténtelo de nuevo"], 201);
     }
 
     private function getUsers()
@@ -142,7 +140,7 @@ class UsersController extends Controller
                     return Carbon::parse($row->created_at)->format('d M, Y h:i:s A');
                 })
                 ->addColumn('roles', function($row){
-                    $role = ""; 
+                    $role = "";
                     if($row->roles != null)
                     {
                         foreach($row->roles as $next)
@@ -153,9 +151,9 @@ class UsersController extends Controller
                     return $role;
                 })
                 ->addColumn('action', function($row){
-                    $action = ""; 
-                    $action.="<a class='btn btn-xs btn-warning' id='btnEdit' href='".route('users.edit', $row->id)."'><i class='fas fa-edit'></i></a>"; 
-                    $action.=" <button class='btn btn-xs btn-outline-danger' id='btnDel' data-id='".$row->id."'><i class='fas fa-trash'></i></button>"; 
+                    $action = "";
+                    $action.="<a class='btn btn-xs btn-warning' id='btnEdit' href='".route('users.edit', $row->id)."'><i class='fas fa-edit'></i></a>";
+                    $action.=" <button class='btn btn-xs btn-outline-danger' id='btnDel' data-id='".$row->id."'><i class='fas fa-trash'></i></button>";
                     return $action;
                 })
                 ->rawColumns(['name', 'date','roles', 'action'])->make('true');

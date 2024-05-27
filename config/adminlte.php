@@ -278,70 +278,136 @@ return [
     'laravel_mix_js_path' => 'js/app.js',
 
     /*
-    |--------------------------------------------------------------------------
-    | Menu Items
-    |--------------------------------------------------------------------------
-    |
-    | Here we can modify the sidebar/top navigation of the admin panel.
-    |
-    | For detailed instructions you can look here:
-    | https://github.com/jeroennoten/Laravel-AdminLTE/wiki/Menu-Configuration
-    |
-    */
+|--------------------------------------------------------------------------
+| Menu Items
+|--------------------------------------------------------------------------
+|
+| Here we can modify the sidebar/top navigation of the admin panel.
+|
+| For detailed instructions you can look here:
+| https://github.com/jeroennoten/Laravel-AdminLTE/wiki/Menu-Configuration
+|
+*/
 
-    'menu' => [
-        // Navbar items:
-        [
-            'type'         => 'navbar-search',
-            'text'         => 'search',
-            'topnav_right' => true,
-        ],
-        [
-            'type'         => 'fullscreen-widget',
-            'topnav_right' => true,
-        ],
-
-        // Sidebar items:
-        [
-            'text' => 'Dashboard',
-            'route' => 'dashboard',
-            'icon' => 'fas fa-fw fa-home'
-        ],
-        [
-            'text'        => 'Users',
-            'icon'        => 'fas fa-fw fa-users',
-            'submenu'      =>[
-                [
-                    'text' => 'All',
-                    'route' => 'users.index',
-                    'active' => ['users', 'users/*'],
-                ],
-                [
-                    'text' => 'Roles',
-                    'route' => 'users.roles.index',
-                    'active' => ['users/roles/*'],
-                ],
-                [
-                    'text' => 'Permissions',
-                    'route' => 'users.permissions.index',
-                    'active' => ['users/permissions/*'],
-                ],
-            ]
-           
-        ],
-        ['header' => 'account_settings'],
-        [
-            'text' => 'profile',
-            'url'  => 'profile',
-            'icon' => 'fas fa-fw fa-user',
-        ],
-        [
-            'text' => 'Settings',
-            'url'  => 'settings',
-            'icon' => 'fas fa-fw fa-cogs',
-        ],
-        
+'menu' => [
+    // Navbar items:
+    [
+        'type'         => 'navbar-search',
+        'text'         => 'buscar',
+        'topnav_right' => true,
     ],
+    [
+        'type'         => 'fullscreen-widget',
+        'topnav_right' => true,
+    ],
+
+    // Sidebar items:
+    [
+        'text' => 'Dashboard',
+        'route' => 'dashboard',
+        'icon' => 'fas fa-fw fa-home'
+    ],
+    [
+        'text'        => 'Usuarios',
+        'icon'        => 'fas fa-fw fa-users',
+        'submenu'      =>[
+            [
+                'text' => 'Todos',
+                'route' => 'users.index',
+                'active' => ['users', 'users/*'],
+            ],
+            [
+                'text' => 'Roles',
+                'route' => 'users.roles.index',
+                'active' => ['users/roles/*'],
+            ],
+            [
+                'text' => 'Permisos',
+                'route' => 'users.permissions.index',
+                'active' => ['users/permissions/*'],
+            ],
+        ]
+    ],
+    [
+        'header' => 'Gestión de Taller',
+    ],
+    [
+        'text'        => 'Marcas',
+        'route'       => 'brands.index',
+        'icon'        => 'fas fa-fw fa-car',
+    ],
+    [
+        'text'        => 'Grupos de Clientes',
+        'route'       => 'client-groups.index',
+        'icon'        => 'fas fa-fw fa-users-cog',
+    ],
+    [
+        'text'        => 'Clientes',
+        'route'       => 'clients.index',
+        'icon'        => 'fas fa-fw fa-user-friends',
+    ],
+    [
+        'text'        => 'Incidentes',
+        'route'       => 'incidents.index',
+        'icon'        => 'fas fa-fw fa-exclamation-triangle',
+    ],
+    [
+        'text'        => 'Productos',
+        'route'       => 'products.index',
+        'icon'        => 'fas fa-fw fa-box-open',
+    ],
+    [
+        'text'        => 'Reportes',
+        'route'       => 'reports.index',
+        'icon'        => 'fas fa-fw fa-chart-line',
+    ],
+    [
+        'text'        => 'Servicios',
+        'route'       => 'services.index',
+        'icon'        => 'fas fa-fw fa-concierge-bell',
+    ],
+    [
+        'text'        => 'Ajustes',
+        'route'       => 'settings.index',
+        'icon'        => 'fas fa-fw fa-cogs',
+    ],
+    [
+        'text'        => 'Vehículos',
+        'route'       => 'vehicles.index',
+        'icon'        => 'fas fa-fw fa-car-side',
+    ],
+    [
+        'text'        => 'Solicitudes de Almacén',
+        'route'       => 'warehouse-requests.index',
+        'icon'        => 'fas fa-fw fa-warehouse',
+    ],
+    [
+        'text'        => 'Órdenes de Trabajo',
+        'route'       => 'work-orders.index',
+        'icon'        => 'fas fa-fw fa-tools',
+        'submenu'     => [
+            [
+                'text' => 'Nueva Orden de Trabajo',
+                'route' => 'work-orders.create-step-one',
+                'icon' => 'fas fa-fw fa-plus-circle',
+            ],
+        ]
+    ],
+    [
+        'header' => 'Configuración de la Cuenta',
+    ],
+    [
+        'text' => 'Perfil',
+        'url'  => 'profile',
+        'icon' => 'fas fa-fw fa-user',
+    ],
+    [
+        'text' => 'Configuraciones',
+        'url'  => 'settings',
+        'icon' => 'fas fa-fw fa-cogs',
+    ],
+],
+
 
     /*
     |--------------------------------------------------------------------------

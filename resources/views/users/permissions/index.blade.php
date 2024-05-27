@@ -1,9 +1,9 @@
 @extends('adminlte::page')
 
-@section('title', 'Permissions | Dashboard')
+@section('title', 'Permisos | Dashboard')
 
 @section('content_header')
-    <h1>Permissions</h1>
+    <h1>Permisos</h1>
 @stop
 
 @section('content')
@@ -16,20 +16,20 @@
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">
-                            <h5>Add New</h5>
+                            <h5>Agregar Nuevo</h5>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="form-group">
-                            <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="name" placeholder="Enter Permission Name" value="{{old('name')}}">
+                            <label for="name" class="form-label">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="name" placeholder="Ingrese Nombre del Permiso" value="{{old('name')}}">
                             @if($errors->has('name'))
                                 <span class="text-danger">{{$errors->first('name')}}</span>
                             @endif
                         </div>
                     </div>
                     <div class="card-footer">
-                        <button type="submit" class="btn btn-primary">Save</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
                     </div>
                 </div>
             </form>
@@ -38,7 +38,7 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">
-                        <h5>List</h5>
+                        <h5>Lista</h5>
                     </div>
                 </div>
                 <div class="card-body">
@@ -48,9 +48,9 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Name</th>
+                                    <th>Nombre</th>
                                     <th>Guard</th>
-                                    <th>Action</th>
+                                    <th>Acción</th>
                                 </tr>
                             </thead>
                         </table>
@@ -75,26 +75,26 @@
     })
     $(document).ready(function(){
         var table = $('#tblData').DataTable({
-            reponsive:true, processing:true, serverSide:true, autoWidth:false, 
-            ajax:"{{route('users.permissions.index')}}", 
+            reponsive:true, processing:true, serverSide:true, autoWidth:false,
+            ajax:"{{route('users.permissions.index')}}",
             columns:[
                 {data:'id', name:'id'},
                 {data:'name', name:'name'},
                 {data:'guard_name', name:'guard_name'},
                 {data:'action', name:'action'},
-            ], 
+            ],
             order:[[0, "desc"]]
         });
         $('body').on('click', '#btnDel', function(){
-            //confirmation
+            //confirmación
             var id = $(this).data('id');
-            if(confirm('Delete Data '+id+'?')==true)
+            if(confirm('¿Eliminar datos '+id+'?')==true)
             {
-                var route = "{{route('users.permissions.destroy', ':id')}}"; 
+                var route = "{{route('users.permissions.destroy', ':id')}}";
                 route = route.replace(':id', id);
                 $.ajax({
-                    url:route, 
-                    type:"delete", 
+                    url:route,
+                    type:"delete",
                     success:function(res){
                         console.log(res);
                         $("#tblData").DataTable().ajax.reload();
@@ -104,12 +104,10 @@
                     }
                 });
             }else{
-                //do nothing
+                //no hacer nada
             }
         });
     });
-    
-   
 </script>
 @stop
 

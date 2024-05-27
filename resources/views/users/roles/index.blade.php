@@ -12,9 +12,9 @@
        <div class="card">
            <div class="card-header">
                <div class="card-title">
-                   <h5>List</h5>
+                   <h5>Lista</h5>
                </div>
-               <a class="float-right btn btn-primary btn-xs m-0" href="{{route('users.roles.create')}}"><i class="fas fa-plus"></i> Add</a>
+               <a class="float-right btn btn-primary btn-xs m-0" href="{{route('users.roles.create')}}"><i class="fas fa-plus"></i> Agregar</a>
            </div>
            <div class="card-body">
                <!--DataTable-->
@@ -23,10 +23,10 @@
                        <thead>
                            <tr>
                                <th>ID</th>
-                               <th>Name</th>
-                               <th>Users</th>
-                               <th>Permission</th>
-                               <th>Action</th>
+                               <th>Nombre</th>
+                               <th>Usuarios</th>
+                               <th>Permisos</th>
+                               <th>Acción</th>
                            </tr>
                        </thead>
                    </table>
@@ -49,42 +49,40 @@
     })
     $(document).ready(function(){
         var table = $('#tblData').DataTable({
-            reponsive:true, processing:true, serverSide:true, autoWidth:false, 
-            ajax:"{{route('users.roles.index')}}", 
+            reponsive:true, processing:true, serverSide:true, autoWidth:false,
+            ajax:"{{route('users.roles.index')}}",
             columns:[
                 {data:'id', name:'id'},
                 {data:'name', name:'name'},
                 {data:'users_count', name:'users_count', className:"text-center"},
                 {data:'permissions_count', name:'permissions_count', className:"text-center"},
                 {data:'action', name:'action', bSortable:false, className:"text-center"},
-            ], 
-            order:[[0, "desc"]], 
-            bDestory:true,
+            ],
+            order:[[0, "desc"]],
+            bDestroy:true,
         });
         $('body').on('click', '#btnDel', function(){
-            //confirmation
+            //confirmación
             var id = $(this).data('id');
-            if(confirm('Delete Data '+id+'?')==true)
+            if(confirm('¿Eliminar Datos '+id+'?')==true)
             {
-                var route = "{{route('users.roles.destroy', ':id')}}"; 
+                var route = "{{route('users.roles.destroy', ':id')}}";
                 route = route.replace(':id', id);
                 $.ajax({
-                    url:route, 
-                    type:"delete", 
+                    url:route,
+                    type:"delete",
                     success:function(res){
                         console.log(res);
                         $("#tblData").DataTable().ajax.reload();
                     },
                     error:function(res){
-                        $('#errorBox').html('<div class="alert alert-dander">'+response.message+'</div>');
+                        $('#errorBox').html('<div class="alert alert-danger">'+response.message+'</div>');
                     }
                 });
             }else{
-                //do nothing
+                //no hacer nada
             }
         });
-
-        
     });
 </script>
 @stop

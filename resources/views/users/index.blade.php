@@ -1,9 +1,9 @@
 @extends('adminlte::page')
 
-@section('title', 'Users | Dashboard')
+@section('title', 'Usuarios | Dashboard')
 
 @section('content_header')
-    <h1>Users</h1>
+    <h1>Usuarios</h1>
 @stop
 
 @section('content')
@@ -16,34 +16,34 @@
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">
-                            <h5>Add New</h5>
+                            <h5>Agregar Nuevo</h5>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="form-group">
-                            <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="name" placeholder="Enter Full Name" value="{{old('name')}}">
+                            <label for="name" class="form-label">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="name" placeholder="Ingresar Nombre Completo" value="{{old('name')}}">
                             @if($errors->has('name'))
                                 <span class="text-danger">{{$errors->first('name')}}</span>
                             @endif
                         </div>
                         <div class="form-group">
-                            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-                            <input type="email" class="form-control" name="email" placeholder="Enter Users Email" value="{{old('email')}}">
+                            <label for="email" class="form-label">Correo Electrónico <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" name="email" placeholder="Ingresar Correo Electrónico" value="{{old('email')}}">
                             @if($errors->has('email'))
                                 <span class="text-danger">{{$errors->first('email')}}</span>
                             @endif
                         </div>
                         <div class="form-group">
-                            <label for="password" class="form-label">Password</label>
-                            <input type="password" class="form-control" name="password" placeholder="Enter Users Password" value="{{old('password')}}">
+                            <label for="password" class="form-label">Contraseña</label>
+                            <input type="password" class="form-control" name="password" placeholder="Ingresar Contraseña" value="{{old('password')}}">
                             @if($errors->has('password'))
                                 <span class="text-danger">{{$errors->first('password')}}</span>
                             @endif
                         </div>
                         <div class="form-group">
                             <label for="roles" class="form-label">Roles</label>
-                            <select class="form-control select2" multiple="multiple" id="select2" data-placeholder="Select Roles" name="roles[]">
+                            <select class="form-control select2" multiple="multiple" id="select2" data-placeholder="Seleccionar Roles" name="roles[]">
                             @foreach ($roles as $role)
                                 <option value="{{$role->id}}">{{ucfirst($role->name)}}</option>
                             @endforeach
@@ -51,7 +51,7 @@
                         </div>
                     </div>
                     <div class="card-footer">
-                        <button type="submit" class="btn btn-primary">Save</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
                     </div>
                 </div>
             </form>
@@ -60,7 +60,7 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">
-                        <h5>List</h5>
+                        <h5>Lista</h5>
                     </div>
                 </div>
                 <div class="card-body">
@@ -70,11 +70,11 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Date</th>
+                                    <th>Nombre</th>
+                                    <th>Correo Electrónico</th>
+                                    <th>Fecha</th>
                                     <th>Roles</th>
-                                    <th>Action</th>
+                                    <th>Acción</th>
                                 </tr>
                             </thead>
                         </table>
@@ -102,8 +102,8 @@
     })
     $(document).ready(function(){
         var table = $('#tblData').DataTable({
-            reponsive:true, processing:true, serverSide:true, autoWidth:false, 
-            ajax:"{{route('users.index')}}", 
+            responsive:true, processing:true, serverSide:true, autoWidth:false,
+            ajax:"{{route('users.index')}}",
             columns:[
                 {data:'id', name:'id'},
                 {data:'name', name:'name'},
@@ -111,19 +111,19 @@
                 {data:'date', name:'date'},
                 {data:'roles', name:'roles'},
                 {data:'action', name:'action', bSortable:false, className:"text-center"},
-            ], 
+            ],
             order:[[0, "desc"]]
         });
         $('body').on('click', '#btnDel', function(){
             //confirmation
             var id = $(this).data('id');
-            if(confirm('Delete Data '+id+'?')==true)
+            if(confirm('Eliminar Datos '+id+'?')==true)
             {
-                var route = "{{route('users.destroy', ':id')}}"; 
+                var route = "{{route('users.destroy', ':id')}}";
                 route = route.replace(':id', id);
                 $.ajax({
-                    url:route, 
-                    type:"delete", 
+                    url:route,
+                    type:"delete",
                     success:function(res){
                         console.log(res);
                         $("#tblData").DataTable().ajax.reload();
@@ -137,8 +137,6 @@
             }
         });
     });
-    
-   
 </script>
 @stop
 

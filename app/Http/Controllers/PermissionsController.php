@@ -10,7 +10,7 @@ use DataTables;
 class PermissionsController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Mostrar una lista del recurso.
      *
      * @return \Illuminate\Http\Response
      */
@@ -18,13 +18,13 @@ class PermissionsController extends Controller
     {
         if($request->ajax())
         {
-            return $this->getPermissions($request->role_id);            
+            return $this->getPermissions($request->role_id);
         }
         return view('users.permissions.index');
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Mostrar el formulario para crear un nuevo recurso.
      *
      * @return \Illuminate\Http\Response
      */
@@ -34,30 +34,29 @@ class PermissionsController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Almacenar un recurso recién creado en el almacenamiento.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request)
-    {        
-        //Validate name
+    {
+        // Validar nombre
         $this->validate($request, [
             'name' => 'required|unique:permissions,name'
         ]);
-        $permission = Permission::create(["name" => strtolower(tirm($request->name))]);
+        $permission = Permission::create(["name" => strtolower(trim($request->name))]);
         if($permission)
         {
-
-            toast('New Permission Added Successfully.','success');
+            toast('Permiso agregado exitosamente.', 'success');
             return view('users.permissions.index');
         }
-        toast('Error on Saving Permission','error');
+        toast('Error al guardar el permiso', 'error');
         return back()->withInput();
     }
 
     /**
-     * Display the specified resource.
+     * Mostrar el recurso especificado.
      *
      * @param  int  $id
      * @return \Illuminate\Http\Response
@@ -68,18 +67,18 @@ class PermissionsController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Mostrar el formulario para editar el recurso especificado.
      *
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
     public function edit(Permission $permission)
     {
-        return view('users.permissions.edit')->with(['permission'=>$permission]);
+        return view('users.permissions.edit')->with(['permission' => $permission]);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Actualizar el recurso especificado en el almacenamiento.
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
@@ -88,21 +87,20 @@ class PermissionsController extends Controller
     public function update(Request $request, Permission $permission)
     {
         $this->validate($request, [
-            "name" => 'required|unique:permissions,name,'.$permission->id
+            "name" => 'required|unique:permissions,name,' . $permission->id
         ]);
-        
+
         if($permission->update($request->only('name')))
         {
-
-            toast('Permission Updated Successfully.','success');
+            toast('Permiso actualizado exitosamente.', 'success');
             return view('users.permissions.index');
         }
-        toast('Error on Updating Permission','error');
+        toast('Error al actualizar el permiso', 'error');
         return back()->withInput();
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Eliminar el recurso especificado del almacenamiento.
      *
      * @param  int  $id
      * @return \Illuminate\Http\Response
@@ -111,24 +109,23 @@ class PermissionsController extends Controller
     {
         if($request->ajax() && $permission->delete())
         {
-            return response(["message" => "Permission Deleted Successfully"], 200);
+            return response(["message" => "Permiso eliminado exitosamente"], 200);
         }
-        return response(["message" => "Data Delete Error! Please Try again"], 201);
+        return response(["message" => "¡Error al eliminar los datos! Por favor, inténtelo de nuevo"], 201);
     }
 
     private function getPermissions($role_id)
     {
-        $data = Permission::get(); 
+        $data = Permission::get();
         return DataTables::of($data, $role_id)
             ->addColumn('chkBox', function($row) use ($role_id){
-                if($row->name=="dashboard")
+                if($row->name == "dashboard")
                 {
                     return "<input type='checkbox' name='permission[".$row->name."]' value=".$row->name." checked onclick='return false;'>";
                 }else{
-
-                    if($role_id!="")
+                    if($role_id != "")
                     {
-                        $role= Role::where('id', $role_id)->first();
+                        $role = Role::where('id', $role_id)->first();
                         $rolePermissions = $role->permissions->pluck('name')->toArray();
                         if(in_array($row->name, $rolePermissions))
                         {
@@ -139,9 +136,9 @@ class PermissionsController extends Controller
                 }
             })
             ->addColumn('action', function($row){
-                $action = ""; 
-                $action.="<a class='btn btn-xs btn-warning' id='btnEdit' href='".route('users.permissions.edit', $row->id)."'><i class='fas fa-edit'></i></a>"; 
-                $action.=" <button class='btn btn-xs btn-outline-danger' id='btnDel' data-id='".$row->id."'><i class='fas fa-trash'></i></button>"; 
+                $action = "";
+                $action .= "<a class='btn btn-xs btn-warning' id='btnEdit' href='".route('users.permissions.edit', $row->id)."'><i class='fas fa-edit'></i></a>";
+                $action .= " <button class='btn btn-xs btn-outline-danger' id='btnDel' data-id='".$row->id."'><i class='fas fa-trash'></i></button>";
                 return $action;
             })
         ->rawColumns(['chkBox', 'action'])->make(true);
