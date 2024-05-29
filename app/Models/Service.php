@@ -9,11 +9,6 @@ class Service extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'description',
@@ -24,30 +19,25 @@ class Service extends Model
         'updated_by',
     ];
 
-    /**
-     * Get the user that created the service.
-     */
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /**
-     * Get the user that updated the service.
-     */
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
+
     public function workOrders()
     {
-        return $this->belongsToMany(WorkOrder::class, 'service_work_order', 'service_id', 'work_order_id')->withPivot('mechanic_id');
+        return $this->belongsToMany(WorkOrder::class, 'service_work_order', 'service_id', 'work_order_id')
+            ->withPivot('mechanic_id', 'status')
+            ->withTimestamps();
     }
 
     public function mechanic()
     {
         return $this->belongsTo(User::class, 'mechanic_id');
     }
-
-
 }

@@ -260,6 +260,7 @@ class WorkOrderController extends Controller
         $products = session('products', []);
         $extra_reviews = session('extra_reviews', []);
         $mechanics = session('mechanics', []);
+        $quantities = session('quantities', []);
 
         // Verifica que los servicios y productos se carguen correctamente desde la sesión
         $services = array_map(function ($service) {
@@ -270,8 +271,17 @@ class WorkOrderController extends Controller
             return Product::find($product['id']);
         }, $products);
 
-        return view('work-orders.create-step-six', compact('vehicle', 'services', 'products', 'extra_reviews', 'mechanics'));
+        $mechanicNames = [];
+        foreach ($mechanics as $serviceId => $mechanicId) {
+            $mechanic = User::find($mechanicId);
+            if ($mechanic) {
+                $mechanicNames[$serviceId] = $mechanic->name;
+            }
+        }
+
+        return view('work-orders.create-step-six', compact('vehicle', 'services', 'products', 'extra_reviews', 'mechanicNames'));
     }
+
 
 
     // Paso 6: Almacenar la OT completa
@@ -312,7 +322,7 @@ class WorkOrderController extends Controller
         }
 
         Alert::success('Éxito', 'Orden de Trabajo creada con éxito');
-        return redirect()->route('work-orders.show', $workOrder->id);
+        return redirect()->route('executive-work-orders');
     }
 
 
@@ -363,51 +373,51 @@ class WorkOrderController extends Controller
 
     //actualiza estado del servicio
     public function updateWorkOrderStatus(WorkOrder $workOrder)
-{
-    // Comprobar si todos los servicios están completados
-    $allServicesCompleted = $workOrder->services()->wherePivot('status', '!=', 'completado')->doesntExist();
+    {
+        // Comprobar si todos los servicios están completados
+        $allServicesCompleted = $workOrder->services()->wherePivot('status', '!=', 'completado')->doesntExist();
 
-    if ($allServicesCompleted) {
-        $workOrder->status = 'Completado';
-    } else {
-        // Comprobar si al menos un servicio ha sido iniciado
-        $anyServiceStarted = $workOrder->services()->wherePivot('status', 'iniciado')->exists();
-        if ($anyServiceStarted) {
-            $workOrder->status = 'Comenzó';
+        if ($allServicesCompleted) {
+            $workOrder->status = 'Completado';
         } else {
-            // Si no hay servicios iniciados, la OT está en estado Abierto
-            $workOrder->status = 'Abierto';
+            // Comprobar si al menos un servicio ha sido iniciado
+            $anyServiceStarted = $workOrder->services()->wherePivot('status', 'iniciado')->exists();
+            if ($anyServiceStarted) {
+                $workOrder->status = 'Comenzó';
+            } else {
+                // Si no hay servicios iniciados, la OT está en estado Abierto
+                $workOrder->status = 'Abierto';
+            }
         }
+
+        $workOrder->save();
+
+        return response()->json(['status' => 'success', 'message' => 'Estado de la Orden de Trabajo actualizado.']);
     }
-
-    $workOrder->save();
-
-    return response()->json(['status' => 'success', 'message' => 'Estado de la Orden de Trabajo actualizado.']);
-}
 
     // Para mecánicos: actualizar el estado de una orden de trabajo
-public function updateServiceStatus(Request $request, WorkOrder $workOrder, $serviceId)
-{
-    $request->validate([
-        'status' => 'required|string|in:pendiente,iniciado,completado',
-    ]);
+    public function updateServiceStatus(Request $request, WorkOrder $workOrder, $serviceId)
+    {
+        $request->validate([
+            'status' => 'required|string|in:pendiente,iniciado,completado',
+        ]);
 
-    $mechanicId = auth()->user()->id;
-    $service = $workOrder->services()->where('service_id', $serviceId)->wherePivot('mechanic_id', $mechanicId)->first();
+        $mechanicId = auth()->user()->id;
+        $service = $workOrder->services()->where('service_id', $serviceId)->wherePivot('mechanic_id', $mechanicId)->first();
 
-    if ($service) {
-        $workOrder->services()->updateExistingPivot($serviceId, ['status' => $request->status]);
+        if ($service) {
+            $workOrder->services()->updateExistingPivot($serviceId, ['status' => $request->status]);
 
-        // Cambiar estado de la OT según los servicios
-        $this->updateWorkOrderStatus($workOrder);
+            // Cambiar estado de la OT según los servicios
+            $this->updateWorkOrderStatus($workOrder);
 
-        Alert::success('Éxito', 'Estado del servicio actualizado con éxito');
-        return back();
-    } else {
-        Alert::error('Error', 'No tienes permiso para actualizar este servicio');
-        return back();
+            Alert::success('Éxito', 'Estado del servicio actualizado con éxito');
+            return back();
+        } else {
+            Alert::error('Error', 'No tienes permiso para actualizar este servicio');
+            return back();
+        }
     }
-}
 
     // Agregar incidencias
     public function addIncident(Request $request, WorkOrder $workOrder)
@@ -431,15 +441,15 @@ public function updateServiceStatus(Request $request, WorkOrder $workOrder, $ser
 
 
     public function approveIncident(Request $request, WorkOrder $workOrder, $incidentId)
-{
-    $workOrder->incidents()->updateExistingPivot($incidentId, [
-        'approved' => true,
-        'approved_by' => auth()->user()->id,
-    ]);
+    {
+        $workOrder->incidents()->updateExistingPivot($incidentId, [
+            'approved' => true,
+            'approved_by' => auth()->user()->id,
+        ]);
 
-    Alert::success('Éxito', 'Incidencia aprobada con éxito');
-    return back();
-}
+        Alert::success('Éxito', 'Incidencia aprobada con éxito');
+        return back();
+    }
 
 
 
@@ -450,208 +460,225 @@ public function updateServiceStatus(Request $request, WorkOrder $workOrder, $ser
     }
 
     public function warehouseWorkOrdersList(Request $request)
-{
-    if ($request->ajax()) {
-        $data = WorkOrder::with(['client', 'vehicle.brand', 'products'])->whereHas('products')->latest()->get();
+    {
+        if ($request->ajax()) {
+            $data = WorkOrder::with(['client', 'vehicle.brand', 'products'])->whereHas('products')->latest()->get();
 
-        return Datatables::of($data)
-            ->addIndexColumn()
-            ->addColumn('vehicle', function ($row) {
-                return $row->vehicle ? $row->vehicle->brand->name . ' ' . $row->vehicle->model : '';
-            })
-            ->addColumn('products', function ($row) {
-                return $row->products->sum('pivot.quantity');
-            })
-            ->addColumn('created_at', function ($row) {
-                return $row->created_at->format('Y-m-d H:i:s');
-            })
-            ->addColumn('status', function ($row) {
-                return $row->status;
-            })
-            ->addColumn('action', function ($row) {
-                $totalProducts = $row->products->sum('pivot.quantity');
-                $deliveredProducts = $row->products->where('pivot.status', 'entregado')->sum('pivot.quantity');
+            return Datatables::of($data)
+                ->addIndexColumn()
+                ->addColumn('vehicle', function ($row) {
+                    return $row->vehicle ? $row->vehicle->brand->name . ' ' . $row->vehicle->model : '';
+                })
+                ->addColumn('products', function ($row) {
+                    return $row->products->sum('pivot.quantity');
+                })
+                ->addColumn('created_at', function ($row) {
+                    return $row->created_at->format('Y-m-d H:i:s');
+                })
+                ->addColumn('status', function ($row) {
+                    return $row->status;
+                })
+                ->addColumn('action', function ($row) {
+                    $totalProducts = $row->products->sum('pivot.quantity');
+                    $deliveredProducts = $row->products->where('pivot.status', 'entregado')->sum('pivot.quantity');
 
-                if ($deliveredProducts == 0) {
-                    $statusIcon = '<i class="fas fa-circle text-danger"></i>';
-                } elseif ($deliveredProducts < $totalProducts) {
-                    $statusIcon = '<i class="fas fa-circle text-warning"></i>';
-                } else {
-                    $statusIcon = '<i class="fas fa-circle text-success"></i>';
-                }
+                    if ($deliveredProducts == 0) {
+                        $statusIcon = '<i class="fas fa-circle text-danger"></i>';
+                    } elseif ($deliveredProducts < $totalProducts) {
+                        $statusIcon = '<i class="fas fa-circle text-warning"></i>';
+                    } else {
+                        $statusIcon = '<i class="fas fa-circle text-success"></i>';
+                    }
 
-                return '<a href="' . route('warehouse-work-orders.show', $row->id) . '" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a> ' . $statusIcon;
-            })
-            ->rawColumns(['action'])
-            ->make(true);
+                    return '<a href="' . route('warehouse-work-orders.show', $row->id) . '" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a> ' . $statusIcon;
+                })
+                ->rawColumns(['action'])
+                ->make(true);
+        }
+
+        return view('warehouse-work-orders.index');
     }
 
-    return view('warehouse-work-orders.index');
-}
+    //vista ejecutivos
+    public function executiveWorkOrders(Request $request)
+    {
+        if ($request->ajax()) {
+            $data = WorkOrder::with(['client', 'vehicle', 'services', 'products'])
+                ->where('executive_id', auth()->user()->id)
+                ->latest()
+                ->get();
 
-//vista ejecutivos
-public function executiveWorkOrders(Request $request)
-{
-    if ($request->ajax()) {
-        $data = WorkOrder::with(['client', 'vehicle', 'services', 'products'])
-            ->where('executive_id', auth()->user()->id)
-            ->latest()
-            ->get();
+            return DataTables::of($data)
+                ->addIndexColumn()
+                ->addColumn('client', function ($row) {
+                    return $row->client ? $row->client->name : '';
+                })
+                ->addColumn('vehicle', function ($row) {
+                    return $row->vehicle ? $row->vehicle->brand->name . ' ' . $row->vehicle->model : '';
+                })
+                ->addColumn('service_status', function ($row) {
+                    $allCompleted = $row->services->every(fn ($service) => $service->pivot->status === 'completado');
+                    $anyStarted = $row->services->contains(fn ($service) => $service->pivot->status === 'iniciado');
 
-        return DataTables::of($data)
-            ->addIndexColumn()
-            ->addColumn('client', function ($row) {
-                return $row->client ? $row->client->name : '';
-            })
-            ->addColumn('vehicle', function ($row) {
-                return $row->vehicle ? $row->vehicle->brand->name . ' ' . $row->vehicle->model : '';
-            })
-            ->addColumn('service_status', function ($row) {
-                $allCompleted = $row->services->every(fn($service) => $service->pivot->status === 'completado');
-                $anyStarted = $row->services->contains(fn($service) => $service->pivot->status === 'iniciado');
+                    if ($allCompleted) {
+                        return '<span class="badge badge-success">Completado</span>';
+                    } elseif ($anyStarted) {
+                        return '<span class="badge badge-warning">Iniciado</span>';
+                    } else {
+                        return '<span class="badge badge-danger">Pendiente</span>';
+                    }
+                })
+                ->addColumn('product_status', function ($row) {
+                    $totalProducts = $row->products->sum('pivot.quantity');
+                    $deliveredProducts = $row->products->where('pivot.status', 'entregado')->sum('pivot.quantity');
 
-                if ($allCompleted) {
-                    return '<span class="badge badge-success">Completado</span>';
-                } elseif ($anyStarted) {
-                    return '<span class="badge badge-warning">Iniciado</span>';
-                } else {
-                    return '<span class="badge badge-danger">Pendiente</span>';
-                }
-            })
-            ->addColumn('product_status', function ($row) {
-                $totalProducts = $row->products->sum('pivot.quantity');
-                $deliveredProducts = $row->products->where('pivot.status', 'entregado')->sum('pivot.quantity');
+                    if ($deliveredProducts === $totalProducts) {
+                        return '<span class="badge badge-success">Entregado</span>';
+                    } elseif ($deliveredProducts > 0) {
+                        return '<span class="badge badge-warning">Parcialmente Entregado</span>';
+                    } else {
+                        return '<span class="badge badge-danger">Pendiente</span>';
+                    }
+                })
+                ->addColumn('time', function ($row) {
+                    $completionTime = $row->services->max('pivot.updated_at');
+                    $timeElapsed = now()->diffForHumans($completionTime, true);
+                    return $timeElapsed;
+                })
+                ->addColumn('action', function ($row) {
+                    return '<a href="' . route('executive-work-orders.show', $row->id) . '" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>';
+                })
+                ->rawColumns(['service_status', 'product_status', 'action'])
+                ->make(true);
+        }
 
-                if ($deliveredProducts === $totalProducts) {
-                    return '<span class="badge badge-success">Entregado</span>';
-                } elseif ($deliveredProducts > 0) {
-                    return '<span class="badge badge-warning">Parcialmente Entregado</span>';
-                } else {
-                    return '<span class="badge badge-danger">Pendiente</span>';
-                }
-            })
-            ->addColumn('time', function ($row) {
-                $completionTime = $row->services->max('pivot.updated_at');
-                $timeElapsed = now()->diffForHumans($completionTime, true);
-                return $timeElapsed;
-            })
-            ->addColumn('action', function ($row) {
-                return '<a href="' . route('executive-work-orders.show', $row->id) . '" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>';
-            })
-            ->rawColumns(['service_status', 'product_status', 'action'])
-            ->make(true);
+        return view('executive-work-orders.index');
     }
 
-    return view('executive-work-orders.index');
-}
+    // dettales del ejecutivo
+    public function addService(Request $request, WorkOrder $workOrder)
+    {
+        $request->validate([
+            'service_id' => 'required|exists:services,id',
+            'mechanic_id' => 'required|exists:users,id',
+        ]);
 
-// dettales del ejecutivo
-public function addService(Request $request, WorkOrder $workOrder)
-{
-    $request->validate([
-        'service_id' => 'required|exists:services,id',
-        'mechanic_id' => 'required|exists:users,id',
-    ]);
+        $service = Service::find($request->service_id);
 
-    $service = Service::find($request->service_id);
+        $workOrder->services()->attach($service->id, [
+            'mechanic_id' => $request->mechanic_id,
+            'status' => 'pendiente',
+        ]);
 
-    $workOrder->services()->attach($service->id, [
-        'mechanic_id' => $request->mechanic_id,
-        'status' => 'pendiente',
-    ]);
+        // Actualizar el subtotal, impuesto y total de la OT
+        $workOrder->subtotal += $service->price;
+        $workOrder->tax = $workOrder->subtotal * ($workOrder->tax_percentage / 100);
+        $workOrder->total = $workOrder->subtotal + $workOrder->tax - $workOrder->discount;
 
-    // Actualizar el subtotal, impuesto y total de la OT
-    $workOrder->subtotal += $service->price;
-    $workOrder->tax = $workOrder->subtotal * ($workOrder->tax_percentage / 100);
-    $workOrder->total = $workOrder->subtotal + $workOrder->tax - $workOrder->discount;
+        $workOrder->save();
 
-    $workOrder->save();
-
-    Alert::success('Éxito', 'Servicio agregado con éxito');
-    return back();
-}
-
-public function addProduct(Request $request, WorkOrder $workOrder)
-{
-    $request->validate([
-        'product_id' => 'required|exists:products,id',
-        'quantity' => 'required|integer|min:1',
-    ]);
-
-    $productId = $request->input('product_id');
-    $quantity = $request->input('quantity');
-
-    $workOrder->products()->attach($productId, ['quantity' => $quantity, 'status' => 'pendiente']);
-
-    Alert::success('Éxito', 'Producto agregado con éxito');
-    return back();
-}
-
-public function printWorkOrder(WorkOrder $workOrder)
-{
-    $workOrder->load('vehicle', 'client', 'services', 'products', 'mechanics', 'incidents');
-
-    return view('executive-work-orders.print', compact('workOrder'));
-}
-
-// Para ejecutivos: mostrar detalles de una orden de trabajo
-public function executiveShowWorkOrder(WorkOrder $workOrder)
-{
-    $workOrder->load([
-        'vehicle',
-        'client',
-        'services' => function($query) {
-            $query->with('mechanics');
-        },
-        'products',
-        'incidents.reportedBy'
-    ]);
-
-    $services = Service::all();
-    $products = Product::all();
-    $mechanics = User::role('Mecánico')->get();
-
-    return view('executive-work-orders.show', compact('workOrder', 'services', 'products', 'mechanics'));
-}
-
-
-
-
-
-// Para ejecutivos: aprobar o desaprobar incidencias
-public function updateIncidentStatus(Request $request, WorkOrder $workOrder, $incidentId)
-{
-    $request->validate([
-        'status' => 'required|boolean',
-    ]);
-
-    $workOrder->incidents()->updateExistingPivot($incidentId, [
-        'approved' => $request->status,
-        'approved_by' => auth()->user()->id,
-    ]);
-
-    // Actualizar el estado de la OT según las incidencias
-    $totalIncidents = $workOrder->incidents()->count();
-    $approvedIncidents = $workOrder->incidents()->wherePivot('approved', true)->count();
-    $disapprovedIncidents = $workOrder->incidents()->wherePivot('approved', false)->count();
-
-    if ($approvedIncidents == $totalIncidents) {
-        $workOrder->update(['status' => 'Aprobada']);
-    } elseif ($approvedIncidents > 0 && $approvedIncidents < $totalIncidents) {
-        $workOrder->update(['status' => 'Parcial']);
-    } elseif ($disapprovedIncidents == $totalIncidents) {
-        $workOrder->update(['status' => 'Desaprobada']);
+        Alert::success('Éxito', 'Servicio agregado con éxito');
+        return back();
     }
 
-    Alert::success('Éxito', 'Estado de la incidencia actualizado con éxito');
-    return back();
-}
+    public function addProduct(Request $request, WorkOrder $workOrder)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        $productId = $request->input('product_id');
+        $quantity = $request->input('quantity');
+
+        $workOrder->products()->attach($productId, ['quantity' => $quantity, 'status' => 'pendiente']);
+
+        Alert::success('Éxito', 'Producto agregado con éxito');
+        return back();
+    }
+
+    public function printWorkOrder(WorkOrder $workOrder)
+    {
+        $workOrder->load('vehicle', 'client', 'services', 'products', 'mechanics', 'incidents');
+
+        return view('executive-work-orders.print', compact('workOrder'));
+    }
+
+    // Para ejecutivos: mostrar detalles de una orden de trabajo
+   // Mostrar detalles de la OT
+   public function executiveShowWorkOrder(WorkOrder $workOrder)
+   {
+       // Cargar las relaciones necesarias
+       $workOrder->load([
+           'vehicle',
+           'client',
+           'services' => function ($query) {
+               $query->with('mechanic'); // Relación con mecánico
+           },
+           'products',
+           'incidents' => function ($query) {
+               $query->with('reportedBy'); // Relación con el usuario que reportó la incidencia
+           }
+       ]);
+
+       $services = Service::all();
+       $products = Product::all();
+       $mechanics = User::all();
+       $incidents = Incident::all();
+
+       // Obtener los nombres de los mecánicos asignados a los servicios
+       foreach ($workOrder->services as $service) {
+           $service->mechanic_name = User::find($service->pivot->mechanic_id)->name ?? 'Sin asignar';
+       }
+
+       // Obtener los nombres de los mecánicos que reportaron las incidencias
+       foreach ($workOrder->incidents as $incident) {
+           $incident->reported_by_name = User::find($incident->pivot->reported_by)->name ?? 'Sin asignar';
+       }
+
+       return view('executive-work-orders.show', compact('workOrder', 'services', 'products', 'mechanics', 'incidents'));
+   }
 
 
 
 
 
-//bodega
+
+
+    // Para ejecutivos: aprobar o desaprobar incidencias
+    public function updateIncidentStatus(Request $request, WorkOrder $workOrder, $incidentId)
+    {
+        $request->validate([
+            'status' => 'required|boolean',
+        ]);
+
+        $workOrder->incidents()->updateExistingPivot($incidentId, [
+            'approved' => $request->status,
+            'approved_by' => auth()->user()->id,
+        ]);
+
+        // Actualizar el estado de la OT según las incidencias
+        $totalIncidents = $workOrder->incidents()->count();
+        $approvedIncidents = $workOrder->incidents()->wherePivot('approved', true)->count();
+        $disapprovedIncidents = $workOrder->incidents()->wherePivot('approved', false)->count();
+
+        if ($approvedIncidents == $totalIncidents) {
+            $workOrder->update(['status' => 'Aprobada']);
+        } elseif ($approvedIncidents > 0 && $approvedIncidents < $totalIncidents) {
+            $workOrder->update(['status' => 'Parcial']);
+        } elseif ($disapprovedIncidents == $totalIncidents) {
+            $workOrder->update(['status' => 'Desaprobada']);
+        }
+
+        Alert::success('Éxito', 'Estado de la incidencia actualizado con éxito');
+        return back();
+    }
+
+
+
+
+
+    //bodega
 
     public function showWarehouseWorkOrder(WorkOrder $workOrder)
     {

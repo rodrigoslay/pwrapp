@@ -1,7 +1,5 @@
 <?php
 
-// app/Models/Incident.php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,11 +9,6 @@ class Incident extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'status',
@@ -31,6 +24,7 @@ class Incident extends Model
     public function workOrders()
     {
         return $this->belongsToMany(WorkOrder::class, 'incident_work_order')
-                    ->withPivot('observation', 'reported_by', 'approved', 'approved_by');
+            ->withPivot('observation', 'reported_by', 'approved', 'approved_by')
+            ->withTimestamps();
     }
 }

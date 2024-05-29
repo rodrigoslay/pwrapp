@@ -62,13 +62,7 @@
                                         <tr>
                                             <td>{{ $service->name }}</td>
                                             <td>${{ $service->price }}</td>
-                                            <td>
-                                                @if($service->pivot->mechanic)
-                                                    {{ $service->pivot->mechanic->name }}
-                                                @else
-                                                    Sin asignar
-                                                @endif
-                                            </td>
+                                            <td>{{ $service->mechanic_name }}</td>
                                             <td>
                                                 @if($service->pivot->status == 'completado')
                                                     <span class="badge badge-success">Completado</span>
@@ -142,7 +136,7 @@
                                                     <span class="badge badge-danger">Pendiente</span>
                                                 @endif
                                             </td>
-                                            <td>{{ $incident->reportedBy ? $incident->reportedBy->name : 'N/A' }}</td>
+                                            <td>{{ $incident->reported_by_name }}</td>
                                             <td>
                                                 <form action="{{ route('work-orders.update-incident-status', [$workOrder->id, $incident->id]) }}" method="POST">
                                                     @csrf
