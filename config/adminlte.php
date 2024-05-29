@@ -367,11 +367,6 @@ return [
         'icon'        => 'fas fa-fw fa-concierge-bell',
     ],
     [
-        'text'        => 'Ajustes',
-        'route'       => 'settings.index',
-        'icon'        => 'fas fa-fw fa-cogs',
-    ],
-    [
         'text'        => 'Vehículos',
         'route'       => 'vehicles.index',
         'icon'        => 'fas fa-fw fa-car-side',
@@ -383,15 +378,40 @@ return [
     ],
     [
         'text'        => 'Órdenes de Trabajo',
-        'route'       => 'work-orders.index',
         'icon'        => 'fas fa-fw fa-tools',
         'submenu'     => [
             [
-                'text' => 'Nueva Orden de Trabajo',
+                'text' => 'OT Órdenes',
+                'route' => 'work-orders.index',
+                'icon' => 'fas fa-fw fa-list',
+            ],
+            [
+                'text' => 'Listado de Órdenes',
+                'route' => 'work-orders.list',
+                'icon' => 'fas fa-fw fa-list',
+            ],
+            [
+                'text' => 'Crear de Trabajo',
                 'route' => 'work-orders.create-step-one',
                 'icon' => 'fas fa-fw fa-plus-circle',
             ],
-        ]
+            [
+                'text' => 'ÓT Ejecutivo',
+                'url'  => 'executive-work-orders',
+                'icon' => 'fas fa-clipboard-list',
+                //'can'  => 'executive-access', // Asegúrate de definir este permiso en tu política de acceso
+            ],
+            [
+                'text' => 'ÓT Bodega',
+                'route' => 'warehouse-work-orders.index',
+                'icon' => 'fas fa-fw fa-warehouse',
+            ],
+            [
+                'text' => 'Órdenes Asignadas',
+                'route' => 'mechanic-work-orders',
+                'icon' => 'fas fa-fw fa-user-cog',
+            ],
+        ],
     ],
     [
         'header' => 'Configuración de la Cuenta',

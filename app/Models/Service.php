@@ -39,4 +39,15 @@ class Service extends Model
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
+    public function workOrders()
+    {
+        return $this->belongsToMany(WorkOrder::class, 'service_work_order', 'service_id', 'work_order_id')->withPivot('mechanic_id');
+    }
+
+    public function mechanic()
+    {
+        return $this->belongsTo(User::class, 'mechanic_id');
+    }
+
+
 }

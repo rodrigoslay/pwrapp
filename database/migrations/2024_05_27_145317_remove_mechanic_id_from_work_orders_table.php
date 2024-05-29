@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class AddStatusToClientsTable extends Migration
+class RemoveMechanicIdFromWorkOrdersTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,8 +13,9 @@ class AddStatusToClientsTable extends Migration
      */
     public function up()
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->boolean('status')->default(true)->after('client_group_id');
+        Schema::table('work_orders', function (Blueprint $table) {
+            $table->dropForeign(['mechanic_id']);
+            $table->dropColumn('mechanic_id');
         });
     }
 
@@ -25,8 +26,8 @@ class AddStatusToClientsTable extends Migration
      */
     public function down()
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->dropColumn('status');
+        Schema::table('work_orders', function (Blueprint $table) {
+            $table->foreignId('mechanic_id')->constrained('users');
         });
     }
 }

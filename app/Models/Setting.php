@@ -17,7 +17,6 @@ class Setting extends Model
     protected $fillable = [
         'name',
         'value',
-        'description',
         'created_by',
         'updated_by',
     ];

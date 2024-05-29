@@ -10,30 +10,24 @@
     <form action="{{ route('work-orders.store-step-three') }}" method="POST">
         @csrf
         <input type="hidden" name="vehicle_id" value="{{ $vehicle_id }}">
-        <div class="form-group">
-            <label for="services">Seleccione Servicios</label>
-            <select name="services[]" id="services" class="form-control select2" multiple="multiple" required>
-                @foreach($services as $service)
-                    <option value="{{ $service->id }}">{{ $service->name }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="products">Seleccione Productos (Opcional)</label>
-            <select name="products[]" id="products" class="form-control select2" multiple="multiple">
-                @foreach($products as $product)
-                    <option value="{{ $product->id }}">{{ $product->name }}</option>
-                @endforeach
-            </select>
-        </div>
+
+        <h3>Servicios Disponibles</h3>
+        @foreach($services as $service)
+            <div class="form-group">
+                <input type="checkbox" name="services[]" value="{{ $service->id }}">
+                <label for="service_{{ $service->id }}">{{ $service->name }}</label>
+            </div>
+        @endforeach
+
+        <h3>Productos Disponibles</h3>
+        @foreach($products as $product)
+            <div class="form-group">
+                <input type="checkbox" name="products[{{ $product->id }}]" value="{{ $product->id }}">
+                <label for="product_{{ $product->id }}">{{ $product->name }}</label>
+                <input type="number" name="quantities[{{ $product->id }}]" value="1" min="1" class="form-control" style="width: 80px; display: inline-block;">
+            </div>
+        @endforeach
+
         <button type="submit" class="btn btn-primary">Siguiente</button>
     </form>
-@stop
-
-@section('js')
-    <script>
-        $(document).ready(function() {
-            $('.select2').select2();
-        });
-    </script>
 @stop

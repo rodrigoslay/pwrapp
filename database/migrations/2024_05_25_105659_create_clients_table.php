@@ -20,6 +20,7 @@ class CreateClientsTable extends Migration
             $table->string('email');
             $table->string('phone');
             $table->foreignId('client_group_id')->constrained()->onDelete('cascade');
+            $table->boolean('status')->default(true);
             $table->timestamps();
         });
     }

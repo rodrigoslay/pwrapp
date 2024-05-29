@@ -10,7 +10,7 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-12">
-                <form method="POST" action="{{ route('vehicles.store') }}">
+                <form method="POST" action="{{ route('vehicles.store') }}" enctype="multipart/form-data">
                     @csrf
                     <div class="card">
                         <div class="card-header">
@@ -33,10 +33,7 @@
                                 <label for="registration_date">Fecha de Registro</label>
                                 <input type="date" name="registration_date" class="form-control" value="{{ old('registration_date') }}">
                             </div>
-                            <div class="form-group">
-                                <label for="mileage">Kilometraje</label>
-                                <input type="number" name="mileage" class="form-control" value="{{ old('mileage') }}">
-                            </div>
+                            
                             <div class="form-group">
                                 <label for="brand_id">Marca</label>
                                 <select name="brand_id" class="form-control">

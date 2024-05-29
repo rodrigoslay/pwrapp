@@ -24,20 +24,21 @@
                 <label for="client_id">Seleccione un Cliente (si es diferente al actual)</label>
                 <select name="client_id" id="client_id" class="form-control">
                     @foreach($clients as $client)
-                        <option value="{{ $client->id }}" {{ $latestClient && $client->id == $latestClient->id ? 'selected' : '' }}>
+                        <option value="{{ $client->id }}" {{ $latestClient && $latestClient->id == $client->id ? 'selected' : '' }}>
                             {{ $client->name }}
                         </option>
                     @endforeach
                 </select>
             </div>
-            <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#addClientModal">
-                Agregar Nuevo Cliente
-            </button>
             <button type="submit" class="btn btn-primary">Siguiente</button>
         </form>
     @endif
 
-    <!-- Modal para agregar nuevo cliente -->
+    <!-- Modal para agregar un nuevo cliente -->
+    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#addClientModal">
+        Agregar Nuevo Cliente
+    </button>
+
     <div class="modal fade" id="addClientModal" tabindex="-1" role="dialog" aria-labelledby="addClientModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -48,29 +49,37 @@
                     </button>
                 </div>
                 <form id="addClientForm">
+                    @csrf
                     <div class="modal-body">
                         <div class="form-group">
-                            <label for="client_name">Nombre</label>
-                            <input type="text" class="form-control" id="client_name" name="client_name" required>
+                            <label for="name">Nombre</label>
+                            <input type="text" name="name" class="form-control" required>
                         </div>
                         <div class="form-group">
-                            <label for="client_rut">RUT</label>
-                            <input type="text" class="form-control" id="client_rut" name="client_rut" required>
+                            <label for="rut">RUT</label>
+                            <input type="text" name="rut" class="form-control" required>
                         </div>
                         <div class="form-group">
-                            <label for="client_email">Email</label>
-                            <input type="email" class="form-control" id="client_email" name="client_email" required>
+                            <label for="email">Email</label>
+                            <input type="email" name="email" class="form-control" required>
                         </div>
                         <div class="form-group">
-                            <label for="client_phone">Teléfono</label>
-                            <input type="text" class="form-control" id="client_phone" name="client_phone" required>
+                            <label for="phone">Teléfono</label>
+                            <input type="text" name="phone" class="form-control" required>
                         </div>
                         <div class="form-group">
-                            <label for="client_group_id">Grupo de Cliente</label>
-                            <select name="client_group_id" id="client_group_id" class="form-control" required>
+                            <label for="client_group_id">Grupo de Clientes</label>
+                            <select name="client_group_id" class="form-control" required>
                                 @foreach($clientGroups as $group)
                                     <option value="{{ $group->id }}">{{ $group->name }}</option>
                                 @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="status">Estado</label>
+                            <select name="status" class="form-control" required>
+                                <option value="1">Activo</option>
+                                <option value="0">Inactivo</option>
                             </select>
                         </div>
                     </div>
@@ -84,23 +93,28 @@
     </div>
 @stop
 
+@section('css')
+    <link rel="stylesheet" href="/css/admin_custom.css">
+@stop
+
 @section('js')
-    <script>
-        $('#addClientForm').on('submit', function(e) {
-            e.preventDefault();
+<script>
+    $(document).ready(function() {
+        $('#addClientForm').on('submit', function(event) {
+            event.preventDefault();
             $.ajax({
-                url: '{{ route("clients.store") }}',
-                method: 'POST',
+                url: "{{ route('clients.store') }}",
+                method: "POST",
                 data: $(this).serialize(),
                 success: function(response) {
-                    // Agregar nuevo cliente al select
-                    $('#client_id').append(new Option(response.name, response.id, true, true)).trigger('change');
+                    $('#client_id').append(new Option(response.name, response.id, true, true));
                     $('#addClientModal').modal('hide');
                 },
                 error: function(response) {
-                    console.log(response);
+                    alert('Error al agregar el cliente.');
                 }
             });
         });
-    </script>
+    });
+</script>
 @stop

@@ -18,7 +18,6 @@ class Vehicle extends Model
         'license_plate',
         'client_id',
         'registration_date',
-        'mileage',
         'photo',
         'brand_id',
         'model',
@@ -30,7 +29,11 @@ class Vehicle extends Model
         'status',
     ];
 
-    
+    public function clients()
+    {
+        return $this->belongsToMany(Client::class, 'client_vehicle')
+                    ->withTimestamps();
+    }
 
     /**
      * Get the client that owns the vehicle.

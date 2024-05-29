@@ -12,8 +12,8 @@
         <h3>Servicios Seleccionados</h3>
         @foreach($services as $service)
             <div class="form-group">
-                <label for="mechanic_{{ $service }}">Mecánico para {{ $service }}</label>
-                <select name="mechanics[{{ $service }}]" id="mechanic_{{ $service }}" class="form-control select2" required>
+                <label for="mechanic_{{ $service['id'] }}">Mecánico para {{ $service['name'] }}</label>
+                <select name="mechanics[{{ $service['id'] }}]" id="mechanic_{{ $service['id'] }}" class="form-control select2" required>
                     @foreach($mechanics as $mechanic)
                         <option value="{{ $mechanic->id }}">{{ $mechanic->name }}</option>
                     @endforeach

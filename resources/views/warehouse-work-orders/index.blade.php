@@ -19,11 +19,11 @@
                     <table id="tblData" class="table table-bordered table-striped dataTable dtr-inline">
                         <thead>
                             <tr>
-                                <th>Número de OT</th>
-                                <th>Cliente</th>
+                                <th>OT</th>
                                 <th>Vehículo</th>
-                                <th>Productos Asociados</th>
-                                <th>Servicios Asociados</th>
+                                <th>Productos</th>
+                                <th>Ingreso</th>
+                                <th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -51,10 +51,10 @@
                 ajax: "{{ route('warehouse-work-orders.list') }}",
                 columns: [
                     { data: 'id', name: 'id' },
-                    { data: 'client', name: 'client' },
                     { data: 'vehicle', name: 'vehicle' },
                     { data: 'products', name: 'products' },
-                    { data: 'services', name: 'services' },
+                    { data: 'created_at', name: 'created_at' },
+                    { data: 'status', name: 'status' },
                     { data: 'action', name: 'action', orderable: false, searchable: false },
                 ],
                 order: [[0, 'desc']]
@@ -62,5 +62,3 @@
         });
     </script>
 @stop
-
-@section('plugins.Datatables', true)

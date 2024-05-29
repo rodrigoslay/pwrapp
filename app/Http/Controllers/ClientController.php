@@ -50,18 +50,16 @@ class ClientController extends Controller
             'status' => 'required|boolean',
         ]);
 
-        Client::create([
-            'name' => $request->name,
-            'rut' => $request->rut,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'client_group_id' => $request->client_group_id,
-            'status' => $request->status,
-        ]);
+        $client = Client::create($request->all());
+
+        if ($request->ajax()) {
+            return response()->json($client);
+        }
 
         Alert::success('Éxito', 'Cliente creado con éxito');
         return redirect()->route('clients.index');
     }
+
 
     public function edit(Client $client)
     {

@@ -1,9 +1,9 @@
 @extends('adminlte::page')
 
-@section('title', 'Órdenes de Trabajo con Productos')
+@section('title', 'Órdenes de Trabajo del Ejecutivo')
 
 @section('content_header')
-    <h1>Órdenes de Trabajo con Productos</h1>
+    <h1>Órdenes de Trabajo del Ejecutivo</h1>
 @stop
 
 @section('content')
@@ -11,7 +11,7 @@
         <div class="card">
             <div class="card-header">
                 <div class="card-title">
-                    <h5>Lista de Órdenes de Trabajo con Productos</h5>
+                    <h5>Lista de Órdenes de Trabajo</h5>
                 </div>
             </div>
             <div class="card-body">
@@ -19,11 +19,11 @@
                     <table id="tblData" class="table table-bordered table-striped dataTable dtr-inline">
                         <thead>
                             <tr>
-                                <th>Número de OT</th>
+                                <th>OT</th>
                                 <th>Cliente</th>
-                                <th>Vehículo</th>
-                                <th>Productos Asociados</th>
-                                <th>Servicios Asociados</th>
+                                <th>Servicios</th>
+                                <th>Productos</th>
+                                <th>Tiempo</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -48,13 +48,13 @@
             $('#tblData').DataTable({
                 processing: true,
                 serverSide: true,
-                ajax: "{{ route('warehouse-work-orders.list') }}",
+                ajax: "{{ route('executive-work-orders') }}",
                 columns: [
                     { data: 'id', name: 'id' },
                     { data: 'client', name: 'client' },
-                    { data: 'vehicle', name: 'vehicle' },
-                    { data: 'products', name: 'products' },
-                    { data: 'services', name: 'services' },
+                    { data: 'service_status', name: 'service_status' },
+                    { data: 'product_status', name: 'product_status' },
+                    { data: 'time', name: 'time' },
                     { data: 'action', name: 'action', orderable: false, searchable: false },
                 ],
                 order: [[0, 'desc']]
@@ -62,5 +62,3 @@
         });
     </script>
 @stop
-
-@section('plugins.Datatables', true)

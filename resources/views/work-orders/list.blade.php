@@ -1,9 +1,9 @@
 @extends('adminlte::page')
 
-@section('title', 'Órdenes de Trabajo con Productos')
+@section('title', 'Lista de Órdenes de Trabajo')
 
 @section('content_header')
-    <h1>Órdenes de Trabajo con Productos</h1>
+    <h1>Lista de Órdenes de Trabajo</h1>
 @stop
 
 @section('content')
@@ -11,19 +11,21 @@
         <div class="card">
             <div class="card-header">
                 <div class="card-title">
-                    <h5>Lista de Órdenes de Trabajo con Productos</h5>
+                    <h5>Lista de Órdenes de Trabajo</h5>
                 </div>
+                <a class="float-right btn btn-primary btn-xs m-0" href="{{ route('work-orders.create-step-one') }}"><i class="fas fa-plus"></i> Añadir</a>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
                     <table id="tblData" class="table table-bordered table-striped dataTable dtr-inline">
                         <thead>
                             <tr>
-                                <th>Número de OT</th>
+                                <th>OT</th>
+                                <th>Ejecutivo</th>
                                 <th>Cliente</th>
                                 <th>Vehículo</th>
-                                <th>Productos Asociados</th>
-                                <th>Servicios Asociados</th>
+                                <th>Ingreso</th>
+                                <th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -44,18 +46,26 @@
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
     <script>
+        $.ajaxSetup({
+            headers:{
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        })
         $(document).ready(function() {
             $('#tblData').DataTable({
+                responsive: true,
                 processing: true,
                 serverSide: true,
-                ajax: "{{ route('warehouse-work-orders.list') }}",
+                autoWidth: false,
+                ajax: "{{ route('work-orders.list') }}",
                 columns: [
                     { data: 'id', name: 'id' },
+                    { data: 'executive', name: 'executive' },
                     { data: 'client', name: 'client' },
                     { data: 'vehicle', name: 'vehicle' },
-                    { data: 'products', name: 'products' },
-                    { data: 'services', name: 'services' },
-                    { data: 'action', name: 'action', orderable: false, searchable: false },
+                    { data: 'created_at', name: 'created_at' },
+                    { data: 'status', name: 'status' },
+                    { data: 'action', name: 'action', orderable: false, searchable: false, className: "text-center" },
                 ],
                 order: [[0, 'desc']]
             });

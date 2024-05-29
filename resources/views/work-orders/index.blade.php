@@ -13,7 +13,7 @@
                 <div class="card-title">
                     <h5>Lista de Órdenes de Trabajo</h5>
                 </div>
-                <a class="float-right btn btn-primary btn-xs m-0" href="{{ route('work-orders.create') }}"><i class="fas fa-plus"></i> Añadir</a>
+                <a class="float-right btn btn-primary btn-xs m-0" href="{{ route('work-orders.create-step-one') }}"><i class="fas fa-plus"></i> Añadir</a>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -29,6 +29,7 @@
                                 <th>Acciones</th>
                             </tr>
                         </thead>
+                        <tbody></tbody>
                     </table>
                 </div>
             </div>
