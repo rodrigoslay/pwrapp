@@ -63,4 +63,9 @@ class WorkOrder extends Model
     {
         return $this->belongsTo(User::class, 'executive_id');
     }
+    // Añadir esta relación para obtener el mecánico desde la tabla de pivote
+    public function mechanics()
+    {
+        return $this->belongsToMany(User::class, 'service_work_order', 'work_order_id', 'mechanic_id');
+    }
 }

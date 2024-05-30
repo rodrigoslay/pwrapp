@@ -295,47 +295,97 @@ return [
         'type'         => 'navbar-search',
         'text'         => 'buscar',
         'topnav_right' => true,
+        'icon'         => 'fas fa-fw fa-search',
     ],
     [
         'type'         => 'fullscreen-widget',
         'topnav_right' => true,
+        'icon'         => 'fas fa-fw fa-expand-arrows-alt',
     ],
 
     // Sidebar items:
     [
         'text' => 'Dashboard',
         'route' => 'dashboard',
-        'icon' => 'fas fa-fw fa-home'
+        'icon' => 'fas fa-fw fa-home',
+    ],
+    [
+        'header' => 'Menú Ejecutivo',
+    ],
+    [
+        'text'        => 'Ejecutivo',
+        'icon'        => 'fas fa-fw fa-briefcase',
+        'submenu'     => [
+            [
+                'text' => 'Crear OT',
+                'route' => 'work-orders.create-step-one',
+                'icon' => 'fas fa-fw fa-plus-circle',
+            ],
+            [
+                'text' => 'Mis OT',
+                'url'  => 'executive-work-orders',
+                'icon' => 'fas fa-fw fa-clipboard-list',
+                //'can'  => 'executive-access', // Asegúrate de definir este permiso en tu política de acceso
+            ],
+        ],
+    ],
+    [
+        'header' => 'Menú Mecánico',
+    ],
+    [
+        'text'        => 'Mecánico',
+        'icon'        => 'fas fa-fw fa-tools',
+        'submenu'     => [
+            [
+                'text' => 'Mis OT',
+                'route' => 'mechanic-work-orders',
+                'icon' => 'fas fa-fw fa-user-cog',
+            ],
+        ],
+    ],
+    [
+        'header' => 'Menú Bodega',
+    ],
+    [
+        'text'        => 'Bodega',
+        'icon'        => 'fas fa-fw fa-warehouse',
+        'submenu'     => [
+            [
+                'text' => 'ÓT de Bodega',
+                'route' => 'warehouse-work-orders.index',
+                'icon' => 'fas fa-fw fa-boxes',
+            ],
+        ],
+    ],
+
+    [
+        'header' => 'Gestión de Taller',
     ],
     [
         'text'        => 'Usuarios',
         'icon'        => 'fas fa-fw fa-users',
-        'submenu'      =>[
+        'submenu'      => [
             [
                 'text' => 'Todos',
                 'route' => 'users.index',
+                'icon' => 'fas fa-fw fa-users',
                 'active' => ['users', 'users/*'],
             ],
             [
                 'text' => 'Roles',
                 'route' => 'users.roles.index',
+                'icon' => 'fas fa-fw fa-user-tag',
                 'active' => ['users/roles/*'],
             ],
             [
                 'text' => 'Permisos',
                 'route' => 'users.permissions.index',
+                'icon' => 'fas fa-fw fa-user-shield',
                 'active' => ['users/permissions/*'],
             ],
-        ]
+        ],
     ],
-    [
-        'header' => 'Gestión de Taller',
-    ],
-    [
-        'text'        => 'Marcas',
-        'route'       => 'brands.index',
-        'icon'        => 'fas fa-fw fa-car',
-    ],
+
     [
         'text'        => 'Grupos de Clientes',
         'route'       => 'client-groups.index',
@@ -345,6 +395,11 @@ return [
         'text'        => 'Clientes',
         'route'       => 'clients.index',
         'icon'        => 'fas fa-fw fa-user-friends',
+    ],
+    [
+        'text'        => 'Servicios',
+        'route'       => 'services.index',
+        'icon'        => 'fas fa-fw fa-concierge-bell',
     ],
     [
         'text'        => 'Incidentes',
@@ -362,56 +417,14 @@ return [
         'icon'        => 'fas fa-fw fa-chart-line',
     ],
     [
-        'text'        => 'Servicios',
-        'route'       => 'services.index',
-        'icon'        => 'fas fa-fw fa-concierge-bell',
+        'text'        => 'Marcas',
+        'route'       => 'brands.index',
+        'icon'        => 'fas fa-fw fa-car',
     ],
     [
         'text'        => 'Vehículos',
         'route'       => 'vehicles.index',
         'icon'        => 'fas fa-fw fa-car-side',
-    ],
-    [
-        'text'        => 'Solicitudes de Almacén',
-        'route'       => 'warehouse-requests.index',
-        'icon'        => 'fas fa-fw fa-warehouse',
-    ],
-    [
-        'text'        => 'Órdenes de Trabajo',
-        'icon'        => 'fas fa-fw fa-tools',
-        'submenu'     => [
-            [
-                'text' => 'OT Órdenes',
-                'route' => 'work-orders.index',
-                'icon' => 'fas fa-fw fa-list',
-            ],
-            [
-                'text' => 'Listado de Órdenes',
-                'route' => 'work-orders.list',
-                'icon' => 'fas fa-fw fa-list',
-            ],
-            [
-                'text' => 'Crear de Trabajo',
-                'route' => 'work-orders.create-step-one',
-                'icon' => 'fas fa-fw fa-plus-circle',
-            ],
-            [
-                'text' => 'ÓT Ejecutivo',
-                'url'  => 'executive-work-orders',
-                'icon' => 'fas fa-clipboard-list',
-                //'can'  => 'executive-access', // Asegúrate de definir este permiso en tu política de acceso
-            ],
-            [
-                'text' => 'ÓT Bodega',
-                'route' => 'warehouse-work-orders.index',
-                'icon' => 'fas fa-fw fa-warehouse',
-            ],
-            [
-                'text' => 'Órdenes Asignadas',
-                'route' => 'mechanic-work-orders',
-                'icon' => 'fas fa-fw fa-user-cog',
-            ],
-        ],
     ],
     [
         'header' => 'Configuración de la Cuenta',
@@ -426,7 +439,9 @@ return [
         'url'  => 'settings',
         'icon' => 'fas fa-fw fa-cogs',
     ],
+
 ],
+
 
 
     /*

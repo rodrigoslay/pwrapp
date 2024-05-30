@@ -39,6 +39,7 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+           // \App\Http\Middleware\RedirectIfSessionExpired::class,
         ],
 
         'api' => [
@@ -67,8 +68,8 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
 
-        'role' => RoleMiddleware::class, 
-        'permission' => PermissionMiddleware::class, 
+        'role' => RoleMiddleware::class,
+        'permission' => PermissionMiddleware::class,
         'role_or_permission' => RoleOrPermissionMiddleware::class,
     ];
 }

@@ -23,29 +23,25 @@
                                 <strong>{{ $workOrder->client->name }}</strong><br>
                                 Vehículo: {{ $workOrder->vehicle->brand->name }} {{ $workOrder->vehicle->model }}<br>
                                 Patente: {{ $workOrder->vehicle->license_plate }}<br>
-                                Estado: {{ $workOrder->status }}<br>
                             </address>
                         </div>
 
                         <div class="col-sm-4 invoice-col">
-                            Mecánico
-                            <address>
-                                @foreach ($workOrder->services as $service)
-                                    <p>{{ $service->name }}:
-                                        @if($service->pivot->mechanic)
-                                            {{ $service->pivot->mechanic->name }} ({{ $service->pivot->status }})
-                                        @else
-                                            Sin asignar
-                                        @endif
-                                    </p>
-                                @endforeach
-                            </address>
+                            <img src="{{ asset('img/logopowercars.webp') }}" alt="Logo Powercars" class="img-fluid" style="max-height: 100px;">
+                            <p><b>Ejecutivo:</b> {{ $workOrder->createdBy->name }}</p>
                         </div>
 
                         <div class="col-sm-4 invoice-col">
                             <b>OT ID:</b> {{ $workOrder->id }}<br>
                             <b>Fecha de Ingreso:</b> {{ $workOrder->created_at->format('d/m/Y H:i:s') }}<br>
                             <b>Fecha de Salida:</b> {{ $workOrder->updated_at->format('d/m/Y H:i:s') }}<br>
+                            <b>Estado:</b> <span class="badge" style="font-size: 1.2em; background-color:
+                                @if($workOrder->status === 'Abierto') red
+                                @elseif($workOrder->status === 'Facturado' || $workOrder->status === 'Cerrado') green
+                                @else yellow
+                                @endif">
+                                {{ $workOrder->status }}
+                            </span>
                         </div>
                     </div>
 
@@ -63,15 +59,17 @@
                                 <tbody>
                                     @foreach ($workOrder->services as $service)
                                         <tr>
-                                            <td>{{ $service->name }} - ${{ $service->price }}</td>
+                                            <td>{{ $service->name }}</td>
+                                            <td>{{ $service->mechanic_name ?? 'Sin asignar' }}</td>
                                             <td>
-                                                @if($service->pivot->mechanic)
-                                                    {{ $service->pivot->mechanic->name }}
+                                                @if($service->pivot->status == 'completado')
+                                                    <span class="badge badge-success">Completado</span>
+                                                @elseif($service->pivot->status == 'iniciado')
+                                                    <span class="badge badge-warning">Iniciado</span>
                                                 @else
-                                                    Sin asignar
+                                                    <span class="badge badge-danger">Pendiente</span>
                                                 @endif
                                             </td>
-                                            <td>{{ $service->pivot->status }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -87,7 +85,7 @@
                                     <tr>
                                         <th>Producto</th>
                                         <th>Cantidad</th>
-                                        <th>Precio</th>
+                                        <th>Estado</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -95,7 +93,13 @@
                                         <tr>
                                             <td>{{ $product->name }}</td>
                                             <td>{{ $product->pivot->quantity }}</td>
-                                            <td>${{ $product->price }}</td>
+                                            <td>
+                                                @if($product->pivot->status == 'entregado')
+                                                    <span class="badge badge-success">Entregado</span>
+                                                @else
+                                                    <span class="badge badge-danger">Pendiente</span>
+                                                @endif
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -106,28 +110,48 @@
                     <div class="row">
                         <div class="col-12">
                             <h4>Resumen de Costos</h4>
+                            @php
+                                use App\Helpers\CurrencyHelper;
+
+                                $subtotal = $workOrder->services->sum('price') + $workOrder->products->sum(function($product) {
+                                    return $product->pivot->quantity * $product->price;
+                                });
+                                $discount = $subtotal * ($workOrder->client->clientGroup->discount_percentage / 100);
+                                $tax = ($subtotal - $discount) * ($workOrder->tax_percentage / 100);
+                                $total = $subtotal - $discount + $tax;
+                            @endphp
                             <table class="table">
                                 <tr>
                                     <th>Subtotal:</th>
-                                    <td>${{ number_format($workOrder->subtotal, 2) }}</td>
+                                    <td>{{ CurrencyHelper::format($subtotal) }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Descuento ({{ $workOrder->client->clientGroup->discount_percentage }}%):</th>
+                                    <td>{{ CurrencyHelper::format($discount) }}</td>
                                 </tr>
                                 <tr>
                                     <th>Impuesto ({{ $workOrder->tax_percentage }}%):</th>
-                                    <td>${{ number_format($workOrder->tax, 2) }}</td>
+                                    <td>{{ CurrencyHelper::format($tax) }}</td>
                                 </tr>
-                                @if($workOrder->discount > 0)
-                                    <tr>
-                                        <th>Descuento ({{ $workOrder->discount_percentage }}%):</th>
-                                        <td>${{ number_format($workOrder->discount, 2) }}</td>
-                                    </tr>
-                                @endif
                                 <tr>
                                     <th>Total:</th>
-                                    <td>${{ number_format($workOrder->total, 2) }}</td>
+                                    <td>{{ CurrencyHelper::format($total) }}</td>
                                 </tr>
                             </table>
                         </div>
                     </div>
+
+                    <div class="row no-print">
+                        <div class="col-12">
+                            <button onclick="window.print();" class="btn btn-primary">
+                                <i class="fas fa-print"></i> Imprimir
+                            </button>
+                            <a href="{{ route('executive-work-orders') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Volver a la Lista
+                            </a>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -136,4 +160,14 @@
 
 @section('css')
     <link rel="stylesheet" href="/css/admin_custom.css">
+    <style>
+        @media print {
+            .no-print {
+                display: none;
+            }
+            .main-header, .main-sidebar, .main-footer {
+                display: none;
+            }
+        }
+    </style>
 @stop

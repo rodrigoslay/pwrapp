@@ -20,7 +20,9 @@ use App\Http\Controllers\ProfileController;
 
 Route::get('/', function () {
     return view('welcome');
-});
+})->name('welcome');
+
+
 
 Auth::routes();
 
@@ -55,10 +57,12 @@ Route::get('work-orders/{workOrder}', [WorkOrderController::class, 'show'])->nam
 Route::post('work-orders/{workOrder}/update-service-status/{service}', [WorkOrderController::class, 'updateServiceStatus'])->name('work-orders.update-service-status');
 Route::post('work-orders/{workOrder}/add-incident', [WorkOrderController::class, 'addIncident'])->name('work-orders.add-incident');
 
-// Rutas para mecánicos
+// Rutas para los mecánicos
 Route::get('mechanic-work-orders', [WorkOrderController::class, 'mechanicWorkOrders'])->name('mechanic-work-orders');
+Route::get('mechanic-work-orders/list', [WorkOrderController::class, 'mechanicWorkOrdersList'])->name('mechanic-work-orders.list');
 Route::get('mechanic-work-orders/{workOrder}', [WorkOrderController::class, 'mechanicShowWorkOrder'])->name('mechanic-work-orders.show');
 Route::put('mechanic-work-orders/{workOrder}/update-status', [WorkOrderController::class, 'updateMechanicWorkOrderStatus'])->name('mechanic-work-orders.update-status');
+
 
 // Rutas para bodeguero
 Route::get('warehouse-work-orders', [WorkOrderController::class, 'warehouseWorkOrders'])->name('warehouse-work-orders.index');
@@ -70,14 +74,14 @@ Route::post('warehouse-work-orders/{workOrder}/update-product-status/{product}',
 Route::get('executive-work-orders', [WorkOrderController::class, 'executiveWorkOrders'])->name('executive-work-orders');
 Route::get('executive-work-orders/{workOrder}', [WorkOrderController::class, 'executiveShowWorkOrder'])->name('executive-work-orders.show');
 Route::post('work-orders/{workOrder}/update-incident-status/{incident}', [WorkOrderController::class, 'updateIncidentStatus'])->name('work-orders.update-incident-status');
+Route::post('work-orders/{workOrder}/facturar', [WorkOrderController::class, 'facturar'])->name('work-orders.facturar');
+
 // Rutas para agregar servicios y productos
 Route::post('work-orders/{workOrder}/add-service', [WorkOrderController::class, 'addService'])->name('work-orders.add-service');
 Route::post('work-orders/{workOrder}/add-product', [WorkOrderController::class, 'addProduct'])->name('work-orders.add-product');
 
 // Ruta para imprimir
 Route::get('executive-work-orders/{workOrder}/print', [WorkOrderController::class, 'printWorkOrder'])->name('executive-work-orders.print');
-
-
 
 Route::resource('settings', SettingController::class);
 Route::resource('reports', ReportController::class);
