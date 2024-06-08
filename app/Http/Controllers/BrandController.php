@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Brand;
+use App\Models\CarModel;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\Log;
+
 
 class BrandController extends Controller
 {
@@ -34,25 +37,50 @@ class BrandController extends Controller
 
     public function create()
     {
-        return view('brands.create');
+        $brands = Brand::orderBy('name', 'asc')->get();
+        return view('brands.create', compact('brands'));
     }
 
     public function store(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'status' => 'required|boolean',
-        ]);
+{
+    $messages = [
+        'name.required' => 'El nombre de la marca es obligatorio.',
+        'name.max' => 'El nombre de la marca no debe exceder los 255 caracteres.',
+        'status.required' => 'El estado de la marca es obligatorio.',
+        'status.boolean' => 'El estado de la marca debe ser verdadero o falso.',
+    ];
 
-        Brand::create([
-            'name' => $request->name,
-            'status' => $request->status,
+    $validatedData = $request->validate([
+        'name' => 'required|string|max:255',
+        'status' => 'required|boolean',
+    ], $messages);
+
+    try {
+        $brand = Brand::create([
+            'name' => $validatedData['name'],
+            'status' => $validatedData['status'],
             'created_by' => auth()->user()->id,
+            'updated_by' => auth()->user()->id,
         ]);
 
-        Alert::success('Éxito', 'Marca creada con éxito');
-        return redirect()->route('brands.index');
+        return response()->json([
+            'success' => true,
+            'message' => 'Marca creada con éxito',
+            'brand' => $brand,
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error al crear la marca: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al crear la marca: ' . $e->getMessage(),
+        ], 500);
     }
+}
+
+
+
+
 
     public function edit(Brand $brand)
     {
@@ -60,21 +88,39 @@ class BrandController extends Controller
     }
 
     public function update(Request $request, Brand $brand)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'status' => 'required|boolean',
-        ]);
+{
+    $messages = [
+        'name.required' => 'El nombre de la marca es obligatorio.',
+        'name.max' => 'El nombre de la marca no debe exceder los 255 caracteres.',
+        'status.required' => 'El estado de la marca es obligatorio.',
+        'status.boolean' => 'El estado de la marca debe ser verdadero o falso.',
+    ];
 
+    $validatedData = $request->validate([
+        'name' => 'required|string|max:255',
+        'status' => 'required|boolean',
+    ], $messages);
+
+    try {
         $brand->update([
-            'name' => $request->name,
-            'status' => $request->status,
+            'name' => $validatedData['name'],
+            'status' => $validatedData['status'],
             'updated_by' => auth()->user()->id,
         ]);
 
-        Alert::success('Éxito', 'Marca actualizada con éxito');
-        return redirect()->route('brands.index');
+        return response()->json([
+            'success' => true,
+            'message' => 'Marca actualizada con éxito',
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error al actualizar la marca: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al actualizar la marca: ' . $e->getMessage(),
+        ], 500);
     }
+}
 
     public function destroy(Brand $brand)
     {
@@ -82,4 +128,20 @@ class BrandController extends Controller
         Alert::success('Éxito', 'Marca eliminada con éxito');
         return redirect()->route('brands.index');
     }
+    public function list()
+{
+    $brands = Brand::orderBy('name', 'asc')->get();
+    return response()->json(['brands' => $brands]);
+}
+
+    public function getModels($brandId)
+{
+    try {
+        $models = CarModel::where('brand_id', $brandId)->get();
+        return response()->json(['success' => true, 'models' => $models]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => 'Error al obtener los modelos: ' . $e->getMessage()], 500);
+    }
+}
+
 }

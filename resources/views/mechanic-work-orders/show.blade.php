@@ -3,7 +3,7 @@
 @section('title', 'Detalle de la Orden de Trabajo')
 
 @section('content_header')
-    <h1>Detalle de la Orden de Trabajo</h1>
+    <h1>Vista de OT Mecánico</h1>
 @stop
 
 @section('content')
@@ -14,7 +14,7 @@
                     <div class="row">
                         <div class="col-12 invoice-col">
                             <h4>
-                                <i class="fas fa-globe"></i> Orden de Trabajo #{{ $workOrder->id }}
+                                <i class="fas fa-globe"></i> OT N° #{{ $workOrder->id }}
                                 <small class="float-right">Fecha: {{ $workOrder->created_at->format('d/m/Y') }}</small>
                             </h4>
                         </div>
@@ -31,37 +31,21 @@
                         </div>
 
                         <div class="col-sm-4 invoice-col">
-                            <img src="{{ asset('img/logopowercars.webp') }}" alt="Logo Powercars" class="img-fluid" style="max-height: 100px;">
-                            <p><b>Ejecutivo:</b> {{ $workOrder->createdBy->name }}</p>
+                            <img src="{{ asset('img/logopowercars.webp') }}" alt="Logo Powercars" class="img-fluid"
+                                style="max-height: 100px;">
+                            <p><b>Ejecutivo:</b> {{ $workOrder->createdBy->name ?? 'No asignado' }}</p>
                         </div>
 
                         <div class="col-sm-4 invoice-col">
                             <b>OT ID:</b> {{ $workOrder->id }}<br>
                             <b>Fecha de Ingreso:</b> {{ $workOrder->created_at->format('d/m/Y H:i:s') }}<br>
-                            <b>Fecha de Salida:</b> {{ $workOrder->status === 'Facturado' || $workOrder->status === 'Cerrado' ? $workOrder->updated_at->format('d/m/Y H:i:s') : 'N/A' }}<br>
-                            <b>Estado:</b> <span class="badge" style="font-size: 1.2em; background-color:
-                                @switch($workOrder->status)
-                                    @case('Abierto')
-                                        red
-                                        @break
-                                    @case('Completado')
-                                        green
-                                        @break
-                                    @case('Facturado')
-                                        black
-                                        @break
-                                    @case('Comenzó')
-                                    @case('Incidencias')
-                                    @case('Aprobada')
-                                    @case('Parcial')
-                                        orange
-                                        @break
-                                    @case('Desaprobado')
-                                        red
-                                        @break
-                                    @default
-                                        yellow
-                                @endswitch">
+                            <b>Fecha de Salida:</b>
+                            {{ $workOrder->status === 'Facturado' || $workOrder->status === 'Cerrado' ? $workOrder->updated_at->format('d/m/Y H:i:s') : 'N/A' }}<br>
+                            <b>Estado:</b> <span class="badge"
+                                style="font-size: 1.2em; background-color:
+                                @if ($workOrder->status === 'Abierto') red
+                                @elseif($workOrder->status === 'Facturado' || $workOrder->status === 'Cerrado') green
+                                @else yellow @endif">
                                 {{ $workOrder->status }}
                             </span>
                         </div>
@@ -76,33 +60,37 @@
                                         <th>Servicio</th>
                                         <th>Mecánico Asignado</th>
                                         <th>Estado</th>
-                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($workOrder->services as $service)
                                         <tr>
                                             <td>{{ $service->name }}</td>
-                                            <td>{{ $service->mechanic_name }}</td>
                                             <td>
-                                                @if($service->pivot->status == 'completado')
-                                                    <span class="badge badge-success">Completado</span>
-                                                @elseif($service->pivot->status == 'iniciado')
-                                                    <span class="badge badge-warning">Iniciado</span>
+                                                @if ($service->pivot->mechanic_id)
+                                                    {{ App\Models\User::find($service->pivot->mechanic_id)->name ?? 'No asignado' }}
                                                 @else
-                                                    <span class="badge badge-danger">Pendiente</span>
+                                                    No asignado
                                                 @endif
                                             </td>
                                             <td>
-                                                @if($service->pivot->mechanic_id == auth()->user()->id && $workOrder->status !== 'Facturado')
-                                                    <form id="service-status-form-{{ $service->id }}" action="{{ route('work-orders.update-service-status', [$workOrder->id, $service->id]) }}" method="POST">
+                                                @if ($service->pivot->mechanic_id == auth()->user()->id)
+                                                    <form class="update-status-form" action="{{ route('mechanic-work-orders.update-status', [$workOrder->id, $service->id]) }}" method="POST">
                                                         @csrf
-                                                        <select name="status" class="form-control" onchange="document.getElementById('service-status-form-{{ $service->id }}').submit()">
+                                                        @method('PUT')
+                                                        <select name="status" class="form-control service-status">
                                                             <option value="pendiente" {{ $service->pivot->status == 'pendiente' ? 'selected' : '' }}>Pendiente</option>
                                                             <option value="iniciado" {{ $service->pivot->status == 'iniciado' ? 'selected' : '' }}>Iniciado</option>
                                                             <option value="completado" {{ $service->pivot->status == 'completado' ? 'selected' : '' }}>Completado</option>
                                                         </select>
                                                     </form>
+                                                @else
+                                                    <span class="badge
+                                                        @if ($service->pivot->status == 'pendiente') badge-danger
+                                                        @elseif($service->pivot->status == 'iniciado') badge-warning
+                                                        @else badge-success @endif">
+                                                        {{ ucfirst($service->pivot->status) }}
+                                                    </span>
                                                 @endif
                                             </td>
                                         </tr>
@@ -129,11 +117,12 @@
                                             <td>{{ $product->name }}</td>
                                             <td>{{ $product->pivot->quantity }}</td>
                                             <td>
-                                                @if($product->pivot->status == 'entregado')
-                                                    <span class="badge badge-success">Entregado</span>
-                                                @else
-                                                    <span class="badge badge-danger">Pendiente</span>
-                                                @endif
+                                                <span class="badge
+                                                    @if ($product->pivot->status == 'pendiente') badge-danger
+                                                    @elseif($product->pivot->status == 'parcialmente_entregado') badge-warning
+                                                    @else badge-success @endif">
+                                                    {{ ucfirst($product->pivot->status) }}
+                                                </span>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -144,24 +133,58 @@
 
                     <div class="row">
                         <div class="col-12">
-                            <h4>Incidencias</h4>
-                            @if($workOrder->status !== 'Facturado')
-                                <button type="button" class="btn btn-primary float-right" data-toggle="modal" data-target="#addIncidentModal">
-                                    Agregar Incidencia
-                                </button>
-                            @endif
+                            <h4>Revisiones</h4>
+                            <div id="accordion">
+                                @foreach ($revisionsWithFaults as $revision)
+                                    <div class="card">
+                                        <div class="card-header" id="heading{{ $revision->id }}">
+                                            <h5 class="mb-0">
+                                                <button class="btn btn-link" data-toggle="collapse" data-target="#collapse{{ $revision->id }}" aria-expanded="true" aria-controls="collapse{{ $revision->id }}">
+                                                    {{ $revision->name }}
+                                                </button>
+                                            </h5>
+                                        </div>
+                                        <div id="collapse{{ $revision->id }}" class="collapse" aria-labelledby="heading{{ $revision->id }}" data-parent="#accordion">
+                                            <div class="card-body">
+                                                <ul class="list-group">
+                                                    @foreach ($revision->faults as $fault)
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            {{ $fault->fallo }}
+                                                            <form class="update-fault-status-form" action="{{ route('mechanic-work-orders.update-fault-status', [$workOrder->id, $revision->id, $fault->id]) }}" method="POST">
+                                                                @csrf
+                                                                @method('PUT')
+                                                                <select name="status" class="form-control revision-status">
+                                                                    <option value="1" {{ $fault->pivot->status == 1 ? 'selected' : '' }}>Bueno</option>
+                                                                    <option value="0" {{ $fault->pivot->status == 0 ? 'selected' : '' }}>Malo</option>
+                                                                </select>
+                                                            </form>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-12 table-responsive">
+                            <h4>Incidencias</h4>
+                            @if ($workOrder->status !== 'Facturado')
+                                <button type="button" class="btn btn-primary float-right mb-2" data-toggle="modal" data-target="#addIncidentModal">
+                                    Agregar Incidencia
+                                </button>
+                            @endif
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
                                         <th>Incidencia</th>
                                         <th>Observación</th>
+                                        <th>Reportado Por</th>
                                         <th>Estado</th>
-                                        <th>Mecánico que Reportó</th>
+                                        <th>Aprobado Por</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -169,14 +192,13 @@
                                         <tr>
                                             <td>{{ $incident->name }}</td>
                                             <td>{{ $incident->pivot->observation }}</td>
+                                            <td>{{ App\Models\User::find($incident->pivot->reported_by)->name ?? 'Desconocido' }}</td>
                                             <td>
-                                                @if($incident->pivot->approved)
-                                                    <span class="badge badge-success">Aprobada</span>
-                                                @else
-                                                    <span class="badge badge-danger">Pendiente</span>
-                                                @endif
+                                                <span class="badge {{ $incident->pivot->approved == 0 ? 'badge-danger' : 'badge-success' }}">
+                                                    {{ $incident->pivot->approved == 0 ? 'Pendiente' : 'Aprobado' }}
+                                                </span>
                                             </td>
-                                            <td>{{ $incident->reported_by_name }}</td>
+                                            <td>{{ $incident->pivot->approved ? App\Models\User::find($incident->pivot->approved_by)->name : 'N/A' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -184,9 +206,9 @@
                         </div>
                     </div>
 
-                    <div class="row no-print">
+                    <div class="row">
                         <div class="col-12">
-                            <a href="{{ route('mechanic-work-orders') }}" class="btn btn-default">
+                            <a href="{{ route('mechanic-work-orders.index') }}" class="btn btn-default">
                                 <i class="fas fa-arrow-left"></i> Volver a la Lista
                             </a>
                         </div>
@@ -198,98 +220,94 @@
     </div>
 
     <!-- Modal para agregar incidencia -->
-    @if($workOrder->status !== 'Facturado')
-        <div class="modal fade" id="addIncidentModal" tabindex="-1" role="dialog" aria-labelledby="addIncidentModalLabel" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <form action="{{ route('work-orders.add-incident', $workOrder->id) }}" method="POST">
-                        @csrf
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="addIncidentModalLabel">Agregar Incidencia</h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
+    <div class="modal fade" id="addIncidentModal" tabindex="-1" role="dialog" aria-labelledby="addIncidentModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form action="{{ route('mechanic-work-orders.add-incident', $workOrder->id) }}" method="POST">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addIncidentModalLabel">Agregar Incidencia</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="incident_id">Incidencia</label>
+                            <select name="incident_id" class="form-control" required>
+                                <option value="">Seleccione una incidencia</option>
+                                @foreach ($incidents as $incident)
+                                    <option value="{{ $incident->id }}">{{ $incident->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label for="incident_id">Incidencia</label>
-                                <select name="incident_id" class="form-control" required>
-                                    @foreach($incidents as $incident)
-                                        <option value="{{ $incident->id }}">{{ $incident->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="observation">Observación</label>
-                                <textarea name="observation" class="form-control" rows="3"></textarea>
-                            </div>
+                        <div class="form-group">
+                            <label for="observation">Observación</label>
+                            <textarea name="observation" class="form-control" rows="3" required></textarea>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                            <button type="submit" class="btn btn-primary">Agregar Incidencia</button>
-                        </div>
-                    </form>
-                </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
             </div>
         </div>
-    @endif
-
-@stop
-
-@section('css')
-    <link rel="stylesheet" href="/css/admin_custom.css">
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/css/select2.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.16/dist/sweetalert2.min.css">
-    <style>
-        .select2-container .select2-selection--single {
-            height: 38px !important;
-        }
-        .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 38px !important;
-        }
-        .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 38px !important;
-        }
-    </style>
+    </div>
 @stop
 
 @section('js')
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/js/select2.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.16/dist/sweetalert2.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
     <script>
-        $(document).ready(function() {
-            $('.select2').select2({
-                width: '100%',
-                placeholder: 'Seleccione una opción',
-                allowClear: true
-            });
-
-            $('.product-status-select').on('change', function() {
-                var form = $(this).closest('form');
-                var status = $(this).val();
-
-                $.ajax({
-                    url: form.attr('action'),
-                    type: 'POST',
-                    data: form.serialize(),
-                    success: function(response) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Éxito',
-                            text: response.message,
-                            confirmButtonText: 'OK',
-                            confirmButtonColor: '#3085d6',
-                        });
-                    },
-                    error: function(response) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: 'Hubo un error al actualizar el estado del producto.'
-                        });
-                    }
-                });
+    $(document).ready(function() {
+        $('.revision-status').change(function() {
+            var form = $(this).closest('form');
+            $.ajax({
+                url: form.attr('action'),
+                type: 'POST',
+                data: form.serialize(),
+                success: function(response) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Éxito',
+                        text: response.message,
+                    });
+                },
+                error: function(response) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: response.responseJSON.message,
+                    });
+                }
             });
         });
+
+        $('.service-status').change(function() {
+            var form = $(this).closest('form');
+            $.ajax({
+                url: form.attr('action'),
+                type: 'POST',
+                data: form.serialize(),
+                success: function(response) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Éxito',
+                        text: response.message,
+                    });
+                },
+                error: function(response) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: response.responseJSON.message,
+                    });
+                }
+            });
+        });
+    });
     </script>
 @stop

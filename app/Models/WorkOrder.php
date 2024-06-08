@@ -24,17 +24,9 @@ class WorkOrder extends Model
         'revisiones',
     ];
 
-    public function services()
+    public function client()
     {
-        return $this->belongsToMany(Service::class, 'service_work_order', 'work_order_id', 'service_id')
-            ->withPivot('mechanic_id', 'status')
-            ->withTimestamps();
-    }
-
-    public function products()
-    {
-        return $this->belongsToMany(Product::class, 'product_work_order', 'work_order_id', 'product_id')
-            ->withPivot('quantity', 'status');
+        return $this->belongsTo(Client::class);
     }
 
     public function vehicle()
@@ -42,9 +34,30 @@ class WorkOrder extends Model
         return $this->belongsTo(Vehicle::class);
     }
 
-    public function client()
+    public function services()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsToMany(Service::class, 'service_work_order')
+                    ->withPivot('mechanic_id', 'status')
+                    ->withTimestamps();
+    }
+
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'product_work_order')
+                    ->withPivot('quantity', 'status')
+                    ->withTimestamps();
+    }
+
+    public function revisions()
+    {
+        return $this->belongsToMany(Revision::class, 'revision_work_order')
+                    ->withPivot('fault_id', 'status')
+                    ->withTimestamps();
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function incidents()
@@ -53,19 +66,10 @@ class WorkOrder extends Model
             ->withPivot('observation', 'reported_by', 'approved', 'approved_by')
             ->withTimestamps();
     }
-
-    public function createdBy()
+    public function brands()
     {
-        return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function executive()
-    {
-        return $this->belongsTo(User::class, 'executive_id');
-    }
-    // Añadir esta relación para obtener el mecánico desde la tabla de pivote
-    public function mechanics()
-    {
-        return $this->belongsToMany(User::class, 'service_work_order', 'work_order_id', 'mechanic_id');
+        return $this->belongsToMany(Brand::class, 'brand_work_order')
+                    ->withPivot('car_model_id', 'year');
     }
 }
+

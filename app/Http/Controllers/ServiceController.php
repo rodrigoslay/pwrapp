@@ -6,6 +6,7 @@ use App\Models\Service;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\Auth;
 
 class ServiceController extends Controller
 {
@@ -46,17 +47,9 @@ class ServiceController extends Controller
             'status' => 'required|boolean',
         ]);
 
-        Service::create([
-            'name' => $request->name,
-            'description' => $request->description,
-            'price' => $request->price,
-            'discount_applicable' => $request->discount_applicable,
-            'status' => $request->status,
-            'created_by' => auth()->user()->id,
-        ]);
+        Service::create($request->all() + ['created_by' => Auth::id()]);
 
-        Alert::success('Éxito', 'Servicio creado con éxito');
-        return redirect()->route('services.index');
+        return response()->json(['success' => true]);
     }
 
     public function edit(Service $service)

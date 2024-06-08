@@ -16,28 +16,12 @@ class Service extends Model
         'discount_applicable',
         'status',
         'created_by',
-        'updated_by',
+        'updated_by'
     ];
 
-    public function createdBy()
+    public function mechanics()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsToMany(User::class, 'service_work_order', 'service_id', 'mechanic_id')->withTimestamps();
     }
 
-    public function updatedBy()
-    {
-        return $this->belongsTo(User::class, 'updated_by');
-    }
-
-    public function workOrders()
-    {
-        return $this->belongsToMany(WorkOrder::class, 'service_work_order', 'service_id', 'work_order_id')
-            ->withPivot('mechanic_id', 'status')
-            ->withTimestamps();
-    }
-
-    public function mechanic()
-    {
-        return $this->belongsTo(User::class, 'mechanic_id');
-    }
 }

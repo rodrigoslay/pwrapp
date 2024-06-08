@@ -63,7 +63,7 @@ return [
     |
     */
 
-    'logo' => '<b>API</b>APP',
+    'logo' => '<b>PWR</b>APP',
     'logo_img' => 'vendor/adminlte/dist/img/AdminLTELogo.png',
     'logo_img_class' => 'brand-image img-circle elevation-3',
     'logo_img_xl' => null,
@@ -338,7 +338,7 @@ return [
         'submenu'     => [
             [
                 'text' => 'Mis OT',
-                'route' => 'mechanic-work-orders',
+                'route' => 'mechanic-work-orders.index',
                 'icon' => 'fas fa-fw fa-user-cog',
             ],
         ],

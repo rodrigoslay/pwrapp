@@ -14,7 +14,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">Lista de Marcas</h3>
-                        <a class="btn btn-success float-right" href="{{ route('brands.create') }}">Crear Marca</a>
+                        <button class="btn btn-success float-right" data-toggle="modal" data-target="#addBrandModal">Crear Marca</button>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -51,6 +51,34 @@
                         {{ $brands->links() }}
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para agregar marca -->
+    <div class="modal fade" id="addBrandModal" tabindex="-1" role="dialog" aria-labelledby="addBrandModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form id="add-brand-form" action="{{ route('brands.store') }}" method="POST">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addBrandModalLabel">Agregar Marca</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="name">Nombre de la Marca</label>
+                            <input type="text" name="name" id="name" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Marca</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

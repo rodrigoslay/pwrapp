@@ -21,7 +21,7 @@ class CreateWorkOrdersTable extends Migration
             $table->float('subtotal');
             $table->float('tax');
             $table->float('total');
-            $table->boolean('review')->default(false);
+            $table->boolean('review')->default(0)->after('status');
             $table->foreignId('executive_id')->constrained('users');
             $table->foreignId('client_id')->constrained();
             $table->foreignId('vehicle_id')->constrained();

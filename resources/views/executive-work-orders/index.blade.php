@@ -14,7 +14,7 @@
                <div class="card-title">
                    <h5>Listado</h5>
                </div>
-               <a class="float-right btn btn-primary btn-xl m-0" href="{{ route('work-orders.create') }}"><i class="fas fa-plus"></i> Agregar</a>
+               <a class="float-right btn btn-primary btn-xl m-0" href="{{ route('work-orders.create-step-one') }}"><i class="fas fa-plus"></i> Agregar</a>
            </div>
            <div class="card-body">
                <!--DataTable-->
@@ -56,7 +56,7 @@
             processing: true,
             serverSide: true,
             autoWidth: false,
-            ajax: "{{ route('executive-work-orders') }}",
+            ajax: "{{ route('executive-work-orders.list') }}",
             columns:[
                 {data: 'id', name: 'id'},
                 {data: 'client', name: 'client'},
@@ -105,9 +105,7 @@
                     }
                     return `<span class="badge ${badgeClass}">${data}</span>`;
                 }},
-                {data: 'action', name: 'action', orderable: false, searchable: false, className: "text-center", render: function(data, type, row) {
-                    return '<a href="' + row.action + '" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>';
-                }},
+                {data: 'action', name: 'action', orderable: false, searchable: false, className: "text-center"},
             ],
             order: [[0, "desc"]]
         });

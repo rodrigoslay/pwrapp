@@ -1,54 +1,53 @@
 @extends('adminlte::master')
 
-@inject('layoutHelper', 'JeroenNoten\LaravelAdminLte\Helpers\LayoutHelper')
-
 @section('adminlte_css')
     @stack('css')
     @yield('css')
 @stop
 
-@section('classes_body', $layoutHelper->makeBodyClasses())
-
-@section('body_data', $layoutHelper->makeBodyData())
+@section('body_class', 'hold-transition sidebar-mini layout-fixed')
 
 @section('body')
+    @if(config('adminlte.preloader.enabled'))
+        <div class="preloader flex-column justify-content-center align-items-center">
+            <img class="animation__shake" src="{{ asset(config('adminlte.preloader.img.path')) }}" alt="{{ config('adminlte.preloader.img.alt') }}" height="{{ config('adminlte.preloader.img.height') }}" width="{{ config('adminlte.preloader.img.width') }}">
+        </div>
+    @endif
+
     <div class="wrapper">
 
-        {{-- Preloader Animation --}}
-        @if($layoutHelper->isPreloaderEnabled())
-            @include('adminlte::partials.common.preloader')
-        @endif
+        {{-- Main Header --}}
+        @include('adminlte::partials.navbar.navbar')
 
-        {{-- Top Navbar --}}
-        @if($layoutHelper->isLayoutTopnavEnabled())
-            @include('adminlte::partials.navbar.navbar-layout-topnav')
-        @else
-            @include('adminlte::partials.navbar.navbar')
-        @endif
+        {{-- Left side column. contains the logo and sidebar --}}
+        @include('adminlte::partials.sidebar.left-sidebar')
 
-        {{-- Left Main Sidebar --}}
-        @if(!$layoutHelper->isLayoutTopnavEnabled())
-            @include('adminlte::partials.sidebar.left-sidebar')
-        @endif
+        {{-- Content Wrapper. Contains page content --}}
+        <div class="content-wrapper">
 
-        {{-- Content Wrapper --}}
-        @empty($iFrameEnabled)
-            @include('adminlte::partials.cwrapper.cwrapper-default')
-        @else
-            @include('adminlte::partials.cwrapper.cwrapper-iframe')
-        @endempty
+            {{-- Content Header (Page header) --}}
+            <section class="content-header">
+                <div class="{{ config('adminlte.classes_content_header', 'container-fluid') }}">
+                    @yield('content_header')
+                </div><!-- /.container-fluid -->
+            </section>
 
-        {{-- Footer --}}
-        @hasSection('footer')
-            @include('adminlte::partials.footer.footer')
-        @endif
+            {{-- Main content --}}
+            <section class="content">
+                <div class="{{ config('adminlte.classes_content', 'container-fluid') }}">
+                    @yield('content')
+                </div><!-- /.container-fluid -->
+            </section><!-- /.content -->
 
-        {{-- Right Control Sidebar --}}
-        @if(config('adminlte.right_sidebar'))
-            @include('adminlte::partials.sidebar.right-sidebar')
-        @endif
+        </div><!-- /.content-wrapper -->
 
-    </div>
+        {{-- Control Sidebar --}}
+        @include('adminlte::partials.sidebar.right-sidebar')
+
+        {{-- Main Footer --}}
+        @include('adminlte::partials.footer.footer')
+
+    </div><!-- ./wrapper -->
 @stop
 
 @section('adminlte_js')

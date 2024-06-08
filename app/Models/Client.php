@@ -35,4 +35,5 @@ class Client extends Model
     {
         return $this->belongsTo(ClientGroup::class);
     }
+    
 }

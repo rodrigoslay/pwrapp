@@ -18,6 +18,7 @@ class Product extends Model
         'sku',
         'name',
         'price',
+        'discounted_price',
         'inventory',
         'created_by',
         'updated_by',

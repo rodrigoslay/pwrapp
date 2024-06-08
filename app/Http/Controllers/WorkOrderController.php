@@ -2,864 +2,461 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\CurrencyHelper;
+use Illuminate\Http\Request;
 use App\Models\WorkOrder;
 use App\Models\Vehicle;
 use App\Models\Client;
-use App\Models\User;
 use App\Models\Service;
 use App\Models\Product;
-use App\Models\ClientGroup;
+use App\Models\Revision;
 use App\Models\Incident;
-use Illuminate\Http\Request;
-use Yajra\DataTables\DataTables;
-use RealRashid\SweetAlert\Facades\Alert;
-use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use App\Models\RevisionWorkOrder;
+use App\Models\CarModel;
+use App\Models\Brand;
+use App\Models\BrandWorkOrder;
+use App\Models\ClientGroup;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
+use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Carbon;
+use Yajra\DataTables\Facades\DataTables;
+
+if (!function_exists('array_flatten')) {
+    function array_flatten($array)
+    {
+        $return = [];
+        array_walk_recursive($array, function($a) use (&$return) { $return[] = $a; });
+        return $return;
+    }
+}
 
 class WorkOrderController extends Controller
 {
-    /**
-     * Mostrar la lista de órdenes de trabajo.
-     */
-    public function index(Request $request)
+    public function createStepOne()
+    {
+        $vehicles = Vehicle::all();
+        $clients = Client::all();
+        $clientGroups = ClientGroup::all();
+        $brands = Brand::all();
+
+        return view('work-orders.create-step-one', compact('vehicles', 'clients', 'clientGroups', 'brands'));
+    }
+
+    public function storeClient(Request $request)
+    {
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'rut' => 'required|string|max:255|unique:clients',
+            'email' => 'required|email|max:255',
+            'phone' => 'required|string|max:15',
+            'client_group_id' => 'required|exists:client_groups,id',
+            'status' => 'required|boolean',
+        ]);
+
+        try {
+            $client = Client::create($validatedData);
+            return response()->json(['success' => true, 'client' => $client]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function storeVehicle(Request $request)
+    {
+        $validatedData = $request->validate([
+            'license_plate' => 'required|string|max:255|unique:vehicles',
+            'brand_id' => 'required|exists:brands,id',
+            'model' => 'required|string|max:255',
+            'color' => 'required|string|max:255',
+            'chassis' => 'required|string|max:255',
+            'kilometers' => 'required|integer',
+            'registration_date' => 'nullable|date',
+            'photo' => 'nullable|image|max:2048',
+            'client_id_vehicle' => 'required|exists:clients,id',
+        ]);
+
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('vehicles', 'public');
+            $validatedData['photo'] = $path;
+        }
+
+        try {
+            $vehicle = Vehicle::create($validatedData);
+            return response()->json(['success' => true, 'vehicle' => $vehicle]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function storeBrand(Request $request)
+    {
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255|unique:brands',
+        ]);
+
+        try {
+            $brand = Brand::create($validatedData);
+            return response()->json(['success' => true, 'brand' => $brand]);
+        } catch (\Exception $e) {
+            Log::error('Error al agregar la marca: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al agregar la marca: ' . $e->getMessage()]);
+        }
+    }
+
+    public function storeCarModel(Request $request)
+    {
+        $validatedData = $request->validate([
+            'brand_id' => 'required|exists:brands,id',
+            'model' => 'required|string|max:255',
+            'year' => 'required|integer|min:1900|max:' . date('Y'),
+        ]);
+
+        try {
+            $carModel = CarModel::create($validatedData);
+            return response()->json(['success' => true, 'carModel' => $carModel]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function getModelsByBrand($brandId)
+    {
+        $models = CarModel::where('brand_id', $brandId)->get();
+        return response()->json($models);
+    }
+
+    public function searchVehicle(Request $request)
+    {
+        $vehicle = Vehicle::find($request->vehicle_id);
+        $client = Client::find($request->client_id);
+
+        if ($vehicle && $client) {
+            session(['vehicle' => $vehicle, 'client' => $client]);
+            return redirect()->route('work-orders.create-step-two');
+        } else {
+            return back()->withErrors(['message' => 'Vehículo o Cliente no encontrado']);
+        }
+    }
+
+    public function createStepTwo()
+    {
+        $services = Service::all();
+        $revisions = Revision::all();
+
+        return view('work-orders.create-step-two', compact('services', 'revisions'));
+    }
+
+    public function storeStepTwo(Request $request)
+    {
+        $selectedRevisions = Revision::whereIn('id', $request->revisions)->with('faults')->get();
+        session(['selected_services' => $request->services, 'selected_revisions' => $selectedRevisions]);
+
+        return redirect()->route('work-orders.create-step-three');
+    }
+
+    public function createStepThree()
+    {
+        $products = Product::all();
+        return view('work-orders.create-step-three', compact('products'));
+    }
+
+    public function storeStepThree(Request $request)
+    {
+        $selectedProducts = array_filter($request->products, function ($value, $key) use ($request) {
+            return $request->has('products.' . $key);
+        }, ARRAY_FILTER_USE_BOTH);
+
+        session([
+            'selected_products' => $selectedProducts,
+            'products_quantities' => $request->quantities,
+        ]);
+
+        return redirect()->route('work-orders.create-step-four');
+    }
+
+    public function createStepFour()
+{
+    $services = session('selected_services') ? Service::whereIn('id', session('selected_services'))->with('mechanics')->get() : [];
+    $selectedRevisions = session('selected_revisions') ? collect(session('selected_revisions'))->pluck('id')->toArray() : [];
+    $revisions = !empty($selectedRevisions) ? Revision::whereIn('id', $selectedRevisions)->get() : [];
+    $mechanics = User::role('Mecánico')->get();
+    $mechanicServiceCounts = $this->getMechanicServiceCounts();
+    $selectedProductIds = session('selected_products', []);
+    $productsQuantities = session('products_quantities', []);
+
+    $products = Product::whereIn('id', $selectedProductIds)->get();
+
+    return view('work-orders.create-step-four', compact('services', 'products', 'revisions', 'productsQuantities', 'mechanics', 'mechanicServiceCounts'));
+}
+
+
+
+    public function storeStepFour(Request $request)
+    {
+        session(['mechanic_assignments' => $request->mechanics]);
+        return redirect()->route('work-orders.create-step-five');
+    }
+
+    public function createStepFive()
+{
+    $services = session('selected_services') ? Service::whereIn('id', session('selected_services'))->with(['mechanics'])->get() : [];
+    $selectedRevisions = session('selected_revisions') ? collect(session('selected_revisions'))->pluck('id')->toArray() : [];
+    $revisions = !empty($selectedRevisions) ? Revision::whereIn('id', $selectedRevisions)->with('faults')->get() : [];
+    $mechanicAssignments = session('mechanic_assignments', []);
+    $productsQuantities = session('products_quantities', []);
+
+    $selectedProducts = session('selected_products', []);
+    $products = !empty($selectedProducts) ? Product::whereIn('id', $selectedProducts)->get() : [];
+    $client = session('client');
+    $vehicle = session('vehicle');
+
+    $mechanicIds = array_values($mechanicAssignments);
+    $mechanicNames = User::whereIn('id', $mechanicIds)->get()->pluck('name', 'id');
+
+    return view('work-orders.create-step-five', compact('services', 'products', 'revisions', 'client', 'vehicle', 'mechanicAssignments', 'productsQuantities', 'mechanicNames'));
+}
+
+
+public function storeStepFive(Request $request)
+{
+    DB::beginTransaction();
+    try {
+        $serviceIds = array_column($request->services, 'id');
+        $productIds = array_column($request->products, 'id');
+
+        $services = Service::whereIn('id', $serviceIds)->get();
+        $products = Product::whereIn('id', $productIds)->get();
+
+        $subtotal = $services->sum('price') +
+            $products->sum(function ($product) use ($request) {
+                return $product->price * collect($request->products)->firstWhere('id', $product->id)['quantity'];
+            });
+
+        $client = Client::find($request->client_id);
+        $discountPercentage = optional($client->clientGroup)->discount_percentage ?? 0;
+        $discount = $subtotal * ($discountPercentage / 100);
+        $tax = ($subtotal - $discount) * 0.19;
+        $total = $subtotal - $discount + $tax;
+
+        $workOrder = new WorkOrder();
+        $workOrder->client_id = $request->client_id;
+        $workOrder->vehicle_id = $request->vehicle_id;
+        $workOrder->entry_mileage = $request->entry_mileage;
+        $workOrder->status = 'Abierto';
+        $workOrder->subtotal = $subtotal;
+        $workOrder->tax = $tax;
+        $workOrder->total = $total;
+        $workOrder->executive_id = auth()->user()->id;
+        $workOrder->created_by = auth()->user()->id;
+        $workOrder->save();
+
+        if ($request->has('services')) {
+            foreach ($request->services as $serviceData) {
+                $mechanic_id = $serviceData['mechanic_id'] ?? null;
+                if ($mechanic_id) {
+                    $workOrder->services()->attach($serviceData['id'], [
+                        'mechanic_id' => $mechanic_id,
+                        'status' => 'pendiente'
+                    ]);
+                }
+            }
+        }
+
+        if ($request->has('products')) {
+            foreach ($request->products as $productData) {
+                $quantity = $request->quantities[$productData['id']] ?? 1;
+                $workOrder->products()->attach($productData['id'], [
+                    'quantity' => $quantity,
+                    'status' => 'pendiente'
+                ]);
+            }
+        }
+
+        if ($request->has('revisions')) {
+            foreach ($request->revisions as $revision) {
+                foreach ($revision['faults'] as $fault) {
+                    $existingEntry = DB::table('revision_work_order')
+                        ->where('work_order_id', $workOrder->id)
+                        ->where('revision_id', $revision['id'])
+                        ->where('fault_id', $fault['id'])
+                        ->first();
+
+                    if (!$existingEntry) {
+                        $workOrder->revisions()->attach($revision['id'], [
+                            'fault_id' => $fault['id'],
+                            'status' => 1
+                        ]);
+                    }
+                }
+            }
+        }
+
+        DB::commit();
+
+        return redirect()->route('executive-work-orders.show', $workOrder->id)->with('success', 'Orden de trabajo creada exitosamente');
+    } catch (\Exception $e) {
+        DB::rollback();
+        return redirect()->route('work-orders.create-step-five')->withErrors(['message' => 'Error al crear la orden de trabajo: ' . $e->getMessage()]);
+    }
+}
+
+
+    private function getMechanicServiceCounts()
+    {
+        return User::role('Mecánico')
+            ->withCount([
+                'workOrders as not_completed_count' => function ($query) {
+                    $query->where('work_orders.status', '!=', 'completado');
+                },
+                'workOrders as completed_count' => function ($query) {
+                    $query->where('work_orders.status', 'completado');
+                }
+            ])->get()->map(function ($mechanic) {
+                return [
+                    'name' => $mechanic->name,
+                    'not_completed_count' => $mechanic->not_completed_count,
+                    'completed_count' => $mechanic->completed_count,
+                ];
+            });
+    }
+
+    public function executiveWorkOrders()
+    {
+        return view('executive-work-orders.index');
+    }
+
+    public function executiveWorkOrdersList(Request $request)
     {
         if ($request->ajax()) {
-            $data = WorkOrder::latest()->get();
-            return Datatables::of($data)
+            $data = WorkOrder::where('executive_id', auth()->user()->id)->with(['client', 'vehicle', 'services', 'products'])->get();
+
+            return DataTables::of($data)
                 ->addIndexColumn()
+                ->addColumn('client', function ($row) {
+                    return $row->client->name;
+                })
+                ->addColumn('vehicle', function ($row) {
+                    return $row->vehicle->brand->name . ' ' . $row->vehicle->model;
+                })
+                ->addColumn('service_status', function ($row) {
+                    $statuses = $row->services->pluck('pivot.status')->unique()->toArray();
+                    if (in_array('completado', $statuses) && count($statuses) == 1) {
+                        return 'Completado';
+                    } elseif (in_array('iniciado', $statuses)) {
+                        return 'Iniciado';
+                    } else {
+                        return 'Pendiente';
+                    }
+                })
+                ->addColumn('product_status', function ($row) {
+                    $statuses = $row->products->pluck('pivot.status')->unique()->toArray();
+                    if (in_array('entregado', $statuses) && count($statuses) == 1) {
+                        return 'Entregado';
+                    } elseif (in_array('parcialmente_entregado', $statuses)) {
+                        return 'Parcialmente Entregado';
+                    } else {
+                        return 'Pendiente';
+                    }
+                })
+                ->addColumn('time', function ($row) {
+                    $created_at = Carbon::parse($row->created_at);
+                    $end_time = ($row->status == 'Facturado') ? Carbon::parse($row->updated_at) : Carbon::now();
+                    $time_diff = $end_time->diff($created_at);
+
+                    if ($time_diff->d > 0) {
+                        return $time_diff->format('%d días %H:%I:%S');
+                    } else {
+                        return $time_diff->format('%H:%I:%S');
+                    }
+                })
+                ->addColumn('status', function ($row) {
+                    return $row->status;
+                })
                 ->addColumn('action', function ($row) {
-                    $btn = '<a href="' . route('work-orders.show', $row->id) . '" class="edit btn btn-primary btn-sm">Ver</a>';
-                    $btn .= ' <a href="' . route('work-orders.edit', $row->id) . '" class="edit btn btn-secondary btn-sm">Editar</a>';
-                    $btn .= '<form action="' . route('work-orders.destroy', $row->id) . '" method="POST" style="display:inline-block;">
-                                ' . csrf_field() . '
-                                ' . method_field("DELETE") . '
-                                <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
-                            </form>';
+                    $btn = '<a href="' . route('executive-work-orders.show', $row->id) . '" class="edit btn btn-primary btn-sm">Ver</a>';
                     return $btn;
                 })
                 ->rawColumns(['action'])
                 ->make(true);
         }
 
-        return view('work-orders.index');
+        return view('executive-work-orders.index');
     }
 
-    /**
-     * Mostrar el formulario para crear una nueva orden de trabajo.
-     */
-    public function create()
+    public function executiveShowWorkOrder($id)
     {
-        return view('work-orders.create');
-    }
-
-    /**
-     * Almacenar una nueva orden de trabajo en la base de datos.
-     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'invoice_number' => 'nullable|string|max:255|unique:work_orders',
-            'discount_percentage' => 'nullable|numeric',
-            'discount_amount' => 'nullable|numeric',
-            'subtotal' => 'required|numeric',
-            'tax' => 'required|numeric',
-            'total' => 'required|numeric',
-            'review' => 'required|boolean',
-            'executive_id' => 'required|exists:users,id',
-            'client_id' => 'required|exists:clients,id',
-            'vehicle_id' => 'required|exists:vehicles,id',
-            'entry_mileage' => 'required|integer',
-            'exit_mileage' => 'nullable|integer',
-            'status' => 'required|string|in:Abierto,Comenzó,Incidencias Reportadas,Incidencias Aprobadas,Completado,Facturado,Cerrado',
-            'revisiones' => 'required|boolean',
-        ]);
-
-        WorkOrder::create($request->all() + ['created_by' => auth()->user()->id]);
-
-        Alert::success('Éxito', 'Orden de Trabajo creada con éxito');
-        return redirect()->route('work-orders.index');
-    }
-
-    /**
-     * Mostrar el formulario para editar una orden de trabajo existente.
-     */
-    public function edit(WorkOrder $workOrder)
-    {
-        return view('work-orders.edit', compact('workOrder'));
-    }
-
-    /**
-     * Actualizar una orden de trabajo en la base de datos.
-     */
-    public function update(Request $request, WorkOrder $workOrder)
-    {
-        $request->validate([
-            'invoice_number' => 'nullable|string|max:255|unique:work_orders,invoice_number,' . $workOrder->id,
-            'discount_percentage' => 'nullable|numeric',
-            'discount_amount' => 'nullable|numeric',
-            'subtotal' => 'required|numeric',
-            'tax' => 'required|numeric',
-            'total' => 'required|numeric',
-            'review' => 'required|boolean',
-            'executive_id' => 'required|exists:users,id',
-            'client_id' => 'required|exists:clients,id',
-            'vehicle_id' => 'required|exists:vehicles,id',
-            'entry_mileage' => 'required|integer',
-            'exit_mileage' => 'nullable|integer',
-            'status' => 'required|string|in:Abierto,Comenzó,Incidencias Reportadas,Incidencias Aprobadas,Completado,Facturado,Cerrado',
-            'revisiones' => 'required|boolean',
-        ]);
-
-        $workOrder->update($request->all() + ['updated_by' => auth()->user()->id]);
-
-        Alert::success('Éxito', 'Orden de Trabajo actualizada con éxito');
-        return redirect()->route('work-orders.index');
-    }
-
-    /**
-     * Eliminar una orden de trabajo de la base de datos.
-     */
-    public function destroy(WorkOrder $workOrder)
-    {
-        $workOrder->delete();
-        Alert::success('Éxito', 'Orden de Trabajo eliminada con éxito');
-        return redirect()->route('work-orders.index');
-    }
-
-    // PASO A PASO DE CREACIÓN DE OT
-
-    /**
-     * Paso 1: Mostrar formulario para buscar vehículo por patente.
-     */
-    public function createStepOne()
-    {
-        return view('work-orders.create-step-one');
-    }
-
-    /**
-     * Paso 2: Buscar vehículo por patente.
-     */
-    public function searchVehicle(Request $request)
-    {
-        $request->validate(['license_plate' => 'required|string']);
-
-        $vehicles = Vehicle::where('license_plate', $request->license_plate)->get();
-
-        $clients = Client::all();
-        $clientGroups = ClientGroup::all();
-        $latestClient = null;
-
-        if ($vehicles->isNotEmpty()) {
-            $latestClient = $vehicles->first()->clients()->latest()->first();
-        }
-
-        return view('work-orders.create-step-two', compact('vehicles', 'clients', 'latestClient', 'clientGroups'));
-    }
-
-    /**
-     * Paso 3: Seleccionar vehículo o crear nueva asociación.
-     */
-    public function selectVehicle(Request $request)
-    {
-        $request->validate([
-            'vehicle_id' => 'required|integer',
-            'client_id' => 'nullable|integer',
-        ]);
-
-        $vehicle = Vehicle::findOrFail($request->vehicle_id);
-
-        if ($request->client_id) {
-            $client = Client::findOrFail($request->client_id);
-            $vehicle->clients()->attach($client->id);
-            session(['client_id' => $client->id]);
-        } else {
-            session(['client_id' => $vehicle->client_id]);
-        }
-
-        return redirect()->route('work-orders.create-step-three', ['vehicle_id' => $vehicle->id]);
-    }
-
-    /**
-     * Paso 3: Mostrar formulario para agregar servicios y productos.
-     */
-    public function createStepThree($vehicle_id)
-    {
-        $services = Service::where('status', true)->get();
-        $products = Product::where('status', true)->get();
-        return view('work-orders.create-step-three', compact('vehicle_id', 'services', 'products'));
-    }
-
-    /**
-     * Paso 3: Almacenar servicios y productos seleccionados.
-     */
-    public function storeStepThree(Request $request)
-    {
-        try {
-            $request->validate([
-                'vehicle_id' => 'required|integer',
-                'services' => 'required|array',
-                'products' => 'nullable|array',
-                'quantities' => 'nullable|array',
-            ]);
-
-            $services = Service::whereIn('id', $request->services)->get()->toArray();
-            $products = [];
-            if ($request->products) {
-                $products = Product::whereIn('id', array_keys($request->products))->get()->toArray();
-            }
-            $quantities = $request->quantities ?? [];
-
-            session([
-                'vehicle_id' => $request->vehicle_id,
-                'services' => $services,
-                'products' => $products,
-                'quantities' => $quantities,
-            ]);
-
-            return redirect()->route('work-orders.create-step-four');
-        } catch (\Exception $e) {
-            \Log::error($e->getMessage());
-            return back()->withErrors('Error al procesar la solicitud. Por favor, intente nuevamente.');
-        }
-    }
-
-    /**
-     * Paso 4: Mostrar formulario para confirmar servicios y revisar extras.
-     */
-    public function createStepFour()
-    {
-        $services = session('services', []);
-        $products = session('products', []);
-        $extra_reviews = ['Revisión de frenos', 'Revisión de aceite', 'Revisión de neumáticos']; // Ejemplo de revisiones extras
-
-        if (!is_array($services) || !isset($services[0]) || !is_array($services[0])) {
-            $services = [];
-        }
-
-        if (!is_array($products) || !isset($products[0]) || !is_array($products[0])) {
-            $products = [];
-        }
-
-        return view('work-orders.create-step-four', compact('services', 'products', 'extra_reviews'));
-    }
-
-    /**
-     * Paso 4: Almacenar confirmación de servicios y revisiones extras.
-     */
-    public function storeStepFour(Request $request)
-    {
-        $request->validate([
-            'extra_reviews' => 'nullable|array',
-        ]);
-
-        session(['extra_reviews' => $request->extra_reviews]);
-
-        return redirect()->route('work-orders.create-step-five');
-    }
-
-    /**
-     * Paso 5: Mostrar formulario para asignar mecánicos.
-     */
-    public function createStepFive()
-    {
-        $services = session('services');
-        if (is_null($services)) {
-            return redirect()->route('work-orders.create-step-three')->withErrors('Por favor, seleccione los servicios primero.');
-        }
-
-        $mechanics = User::role('Mecánico')->get(); // Obtener todos los usuarios con el rol 'Mecánico'
-
-        return view('work-orders.create-step-five', compact('services', 'mechanics'));
-    }
-
-    /**
-     * Paso 5: Almacenar asignaciones de mecánicos.
-     */
-    public function storeStepFive(Request $request)
-    {
-        $request->validate([
-            'mechanics' => 'required|array',
-        ]);
-
-        session(['mechanics' => $request->mechanics]);
-
-        return redirect()->route('work-orders.create-step-six');
-    }
-
-    /**
-     * Paso 6: Mostrar resumen de la OT.
-     */
-    public function createStepSix()
-    {
-        $vehicle = Vehicle::find(session('vehicle_id'));
-        $services = session('services', []);
-        $products = session('products', []);
-        $extra_reviews = session('extra_reviews', []);
-        $mechanics = session('mechanics', []);
-        $quantities = session('quantities', []);
-
-        $services = array_map(function ($service) {
-            return Service::find($service['id']);
-        }, $services);
-
-        $products = array_map(function ($product) {
-            return Product::find($product['id']);
-        }, $products);
-
-        $mechanicNames = [];
-        foreach ($mechanics as $serviceId => $mechanicId) {
-            $mechanic = User::find($mechanicId);
-            if ($mechanic) {
-                $mechanicNames[$serviceId] = $mechanic->name;
-            }
-        }
-
-        return view('work-orders.create-step-six', compact('vehicle', 'services', 'products', 'extra_reviews', 'mechanicNames', 'quantities'));
-    }
-
-    /**
-     * Paso 6: Almacenar la OT completa.
-     */
-    public function storeStepSix(Request $request)
-    {
-        $workOrder = WorkOrder::create([
-            'vehicle_id' => session('vehicle_id'),
-            'client_id' => session('client_id'),
-            'created_by' => auth()->user()->id,
-            'executive_id' => auth()->user()->id,
-            'status' => 'Abierto',
-            'subtotal' => 0,
-            'tax' => 0,
-            'total' => 0,
-            'review' => session('extra_reviews') ? true : false,
-            'entry_mileage' => 0,
-            'exit_mileage' => 0,
-            'revisiones' => session('extra_reviews') ? true : false,
-        ]);
-
-        foreach (session('services') as $service) {
-            $serviceId = $service['id'];
-            $mechanicId = session('mechanics')[$serviceId];
-
-            $workOrder->services()->attach($serviceId, ['mechanic_id' => $mechanicId]);
-
-            DB::table('mechanic_work_order')->insert([
-                'work_order_id' => $workOrder->id,
-                'service_id' => $serviceId,
-                'user_id' => $mechanicId,
-            ]);
-        }
-
-        foreach (session('products') as $product) {
-            $productId = $product['id'];
-            $quantity = session('quantities')[$productId] ?? 1;
-            $workOrder->products()->attach($productId, ['quantity' => $quantity]);
-        }
-
-        Alert::success('Éxito', 'Orden de Trabajo creada con éxito');
-        return redirect()->route('executive-work-orders');
-    }
-
-    // MOSTRAR DETALLES DE OT
-
-    /**
-     * Paso 7: Mostrar detalles de la OT creada.
-     */
-    public function show(WorkOrder $workOrder)
-    {
-        $workOrder->load('services', 'products', 'vehicle', 'createdBy', 'mechanics');
-        return view('work-orders.show', compact('workOrder'));
-    }
-
-    /**
-     * Mostrar órdenes de trabajo asignadas a un mecánico.
-     */
-    public function mechanicWorkOrders(Request $request)
-{
-    if ($request->ajax()) {
-        $data = WorkOrder::with(['client', 'vehicle.brand', 'services', 'products'])
-            ->whereHas('services', function ($query) {
-                $query->where('mechanic_id', auth()->user()->id);
-            })
-            ->latest()
-            ->get();
-
-        foreach ($data as $workOrder) {
-            $workOrder->time = $this->calculateElapsedTime($workOrder);
-            $workOrder->action = route('mechanic-work-orders.show', $workOrder->id); // Añadir la URL de la acción
-        }
-
-        return Datatables::of($data)
-            ->addIndexColumn()
-            ->addColumn('client', function ($row) {
-                return $row->client ? $row->client->name : '';
-            })
-            ->addColumn('vehicle', function ($row) {
-                return $row->vehicle ? $row->vehicle->brand->name . ' ' . $row->vehicle->model : '';
-            })
-            ->addColumn('status', function ($row) {
-                return $row->status;
-            })
-            ->addColumn('time', function ($row) {
-                return $row->time;
-            })
-            ->addColumn('action', function ($row) {
-                return $row->action; // Devolver la URL de la acción
-            })
-            ->rawColumns(['status', 'action'])
-            ->make(true);
-    }
-
-    return view('mechanic-work-orders.index');
-}
-public function mechanicWorkOrdersList(Request $request)
-{
-    if ($request->ajax()) {
-        $mechanicId = auth()->user()->id;
-        $data = WorkOrder::whereHas('services', function ($query) use ($mechanicId) {
-            $query->where('mechanic_id', $mechanicId);
-        })->with(['client', 'vehicle.brand', 'services', 'products'])
-        ->latest()
-        ->get();
-
-        return Datatables::of($data)
-            ->addIndexColumn()
-            ->addColumn('client', function ($row) {
-                return $row->client ? $row->client->name : '';
-            })
-            ->addColumn('vehicle', function ($row) {
-                return $row->vehicle ? $row->vehicle->brand->name . ' ' . $row->vehicle->model : '';
-            })
-            ->addColumn('service_status', function ($row) {
-                $allCompleted = $row->services->every(fn ($service) => $service->pivot->status === 'completado');
-                $anyStarted = $row->services->contains(fn ($service) => $service->pivot->status === 'iniciado');
-
-                if ($allCompleted) {
-                    return 'Completado';
-                } elseif ($anyStarted) {
-                    return 'Iniciado';
-                } else {
-                    return 'Pendiente';
-                }
-            })
-            ->addColumn('product_status', function ($row) {
-                $totalProducts = $row->products->sum('pivot.quantity');
-                $deliveredProducts = $row->products->where('pivot.status', 'entregado')->sum('pivot.quantity');
-
-                if ($deliveredProducts === $totalProducts) {
-                    return 'Entregado';
-                } elseif ($deliveredProducts > 0) {
-                    return 'Parcialmente Entregado';
-                } else {
-                    return 'Pendiente';
-                }
-            })
-            ->addColumn('time', function ($row) {
-                $completionTime = $row->services->max('pivot.updated_at');
-                $timeElapsed = $row->status === 'Facturado'
-                    ? $row->created_at->diffForHumans($row->updated_at, true)
-                    : $row->created_at->diffForHumans(now(), true);
-                return $timeElapsed;
-            })
-            ->addColumn('status', function ($row) {
-                return $row->status;
-            })
-            ->addColumn('action', function ($row) {
-                return route('mechanic-work-orders.show', $row->id);
-            })
-            ->rawColumns(['service_status', 'product_status', 'action'])
-            ->make(true);
-    }
-
-    return view('mechanic-work-orders.index');
-}
-
-
-
-
-
-private function calculateElapsedTime($workOrder)
-{
-    $start = $workOrder->created_at;
-    $end = $workOrder->status === 'Facturado' || $workOrder->status === 'Cerrado' ? $workOrder->updated_at : now();
-    return $start->diffForHumans($end, \Carbon\CarbonInterface::DIFF_ABSOLUTE, false, 2);
-}
-
-
-    /**
-     * Mostrar detalles de una orden de trabajo asignada a un mecánico.
-     */
-    public function mechanicShowWorkOrder(WorkOrder $workOrder)
-    {
-        $workOrder->load([
-            'vehicle',
+        $workOrder = WorkOrder::with([
             'client',
-            'services' => function ($query) {
-                $query->with('createdBy');
-            },
+            'vehicle',
+            'services',
             'products',
+            'revisions.faults' => function ($query) use ($id) {
+                $query->withPivot('status')->wherePivot('work_order_id', $id);
+            },
             'incidents' => function ($query) {
-                $query->with('reportedBy');
+                $query->with('reportedBy', 'approvedBy');
             }
-        ]);
+        ])->findOrFail($id);
 
-        $incidents = Incident::all();
+        $servicesList = Service::all();
+        $mechanics = User::role('Mecánico')->get();
+        $productsList = Product::all();
+        $revisionsList = Revision::all();
 
-        foreach ($workOrder->services as $service) {
-            $service->mechanic_name = User::find($service->pivot->mechanic_id)->name ?? 'Sin asignar';
-        }
+        $revisionsWithFaults = $this->getRevisionsWithFaults($id);
 
-        foreach ($workOrder->incidents as $incident) {
-            $incident->reported_by_name = User::find($incident->pivot->reported_by)->name ?? 'Sin asignar';
-        }
-
-        return view('mechanic-work-orders.show', compact('workOrder', 'incidents'));
+        return view('executive-work-orders.show', compact('workOrder', 'servicesList', 'mechanics', 'productsList', 'revisionsList', 'revisionsWithFaults'));
     }
 
-    /**
-     * Actualizar el estado de una orden de trabajo asignada a un mecánico.
-     */
-    public function updateMechanicWorkOrderStatus(Request $request, WorkOrder $workOrder)
+    private function getRevisionsWithFaults($workOrderId)
+    {
+        return Revision::whereHas('workOrders', function ($query) use ($workOrderId) {
+            $query->where('work_order_id', $workOrderId);
+        })->with(['faults' => function ($query) use ($workOrderId) {
+            $query->wherePivot('work_order_id', $workOrderId);
+        }])->get();
+    }
+
+    public function updateIncidentStatus(Request $request, $workOrderId, $incidentId)
     {
         $request->validate([
-            'status' => 'required|string|in:Abierto,Comenzó,Incidencias,Aprobadas,Completado,Facturado,Cerrado',
+            'status' => 'required|in:0,1',
         ]);
 
-        $workOrder->update([
-            'status' => $request->status,
-            'updated_by' => auth()->user()->id,
-        ]);
+        $workOrder = WorkOrder::findOrFail($workOrderId);
+        $incident = $workOrder->incidents()->where('incident_id', $incidentId)->firstOrFail();
 
-        Alert::success('Éxito', 'Estado de la orden de trabajo actualizado con éxito');
-        return redirect()->route('mechanic-work-orders.show', $workOrder);
+        $incident->pivot->approved = $request->status;
+        $incident->pivot->approved_by = auth()->user()->id;
+        $incident->pivot->save();
+
+        return response()->json(['message' => 'Estado de la incidencia actualizado correctamente']);
     }
 
-    /**
-     * Actualizar el estado de un servicio en una orden de trabajo.
-     */
-    public function updateServiceStatus(Request $request, WorkOrder $workOrder, $serviceId)
-{
-    $request->validate([
-        'status' => 'required|string|in:pendiente,iniciado,completado',
-    ]);
-
-    $mechanicId = auth()->user()->id;
-    $service = $workOrder->services()->where('service_id', $serviceId)->wherePivot('mechanic_id', $mechanicId)->first();
-
-    if ($service) {
-        $workOrder->services()->updateExistingPivot($serviceId, ['status' => $request->status]);
-
-        // Actualizar el estado de la OT si todos los servicios están completados
-        $this->updateWorkOrderStatus($workOrder);
-
-        Alert::success('Éxito', 'Estado del servicio actualizado con éxito');
-        return back();
-    } else {
-        Alert::error('Error', 'No tienes permiso para actualizar este servicio');
-        return back();
-    }
-}
-
-    /**
-     * Actualizar el estado general de una orden de trabajo según los servicios.
-     */
-    public function updateWorkOrderStatus(WorkOrder $workOrder)
+    public function facturar(Request $request, WorkOrder $workOrder)
     {
-        $allServicesCompleted = $workOrder->services()->wherePivot('status', '!=', 'completado')->doesntExist();
-
-        if ($allServicesCompleted) {
-            $workOrder->status = 'Completado';
-        } else {
-            $anyServiceStarted = $workOrder->services()->wherePivot('status', 'iniciado')->exists();
-            if ($anyServiceStarted) {
-                $workOrder->status = 'Comenzó';
-            } else {
-                $workOrder->status = 'Abierto';
-            }
+        $incompleteServices = $workOrder->services()->wherePivot('status', '!=', 'completado')->count();
+        if ($incompleteServices > 0) {
+            return response()->json(['status' => 'error', 'message' => 'No se puede facturar porque hay servicios incompletos.'], 400);
         }
 
+        $undeliveredProducts = $workOrder->products()->wherePivot('status', '!=', 'entregado')->count();
+        if ($undeliveredProducts > 0) {
+            return response()->json(['status' => 'error', 'message' => 'No se puede facturar porque hay productos no entregados.'], 400);
+        }
+
+        $workOrder->status = 'Facturado';
         $workOrder->save();
 
-        return response()->json(['status' => 'success', 'message' => 'Estado de la Orden de Trabajo actualizado.']);
+        return response()->json(['status' => 'success', 'message' => 'Orden de trabajo facturada correctamente.']);
     }
 
-    // GESTIÓN DE INCIDENCIAS
-
-    /**
-     * Agregar una incidencia a una orden de trabajo.
-     */
-    public function addIncident(Request $request, WorkOrder $workOrder)
-    {
-        $request->validate([
-            'incident_id' => 'required|exists:incidents,id',
-            'observation' => 'nullable|string',
-        ]);
-
-        $workOrder->incidents()->attach($request->incident_id, [
-            'observation' => $request->observation,
-            'reported_by' => auth()->user()->id,
-        ]);
-
-        $workOrder->update(['status' => 'Incidencias']);
-
-        Alert::success('Éxito', 'Incidencia agregada con éxito');
-        return back();
-    }
-
-    /**
-     * Aprobar una incidencia en una orden de trabajo.
-     */
-    public function approveIncident(Request $request, WorkOrder $workOrder, $incidentId)
-    {
-        $workOrder->incidents()->updateExistingPivot($incidentId, [
-            'approved' => true,
-            'approved_by' => auth()->user()->id,
-        ]);
-
-        Alert::success('Éxito', 'Incidencia aprobada con éxito');
-        return back();
-    }
-
-    /**
-     * Actualizar el estado de una incidencia en una orden de trabajo.
-     */
-    public function updateIncidentStatus(Request $request, WorkOrder $workOrder, $incidentId)
-    {
-        $request->validate([
-            'status' => 'required|boolean',
-        ]);
-
-        $workOrder->incidents()->updateExistingPivot($incidentId, [
-            'approved' => $request->status,
-            'approved_by' => auth()->user()->id,
-        ]);
-
-        $totalIncidents = $workOrder->incidents()->count();
-        $approvedIncidents = $workOrder->incidents()->wherePivot('approved', true)->count();
-        $disapprovedIncidents = $workOrder->incidents()->wherePivot('approved', false)->count();
-
-        if ($approvedIncidents == $totalIncidents) {
-            $workOrder->update(['status' => 'Aprobada']);
-        } elseif ($approvedIncidents > 0 && $approvedIncidents < $totalIncidents) {
-            $workOrder->update(['status' => 'Parcial']);
-        } elseif ($disapprovedIncidents == $totalIncidents) {
-            $workOrder->update(['status' => 'Desaprobada']);
-        }
-
-        Alert::success('Éxito', 'Estado de la incidencia actualizado con éxito');
-        return back();
-    }
-
-    // GESTIÓN DE PRODUCTOS
-
-    /**
-     * Mostrar órdenes de trabajo para la gestión de bodega.
-     */
-    public function warehouseWorkOrders()
-    {
-        return view('warehouse-work-orders.index');
-    }
-
-    /**
-     * Obtener lista de órdenes de trabajo para la gestión de bodega.
-     */
-    public function warehouseWorkOrdersList(Request $request)
-{
-    if ($request->ajax()) {
-        $data = WorkOrder::with(['client', 'vehicle.brand', 'services', 'products'])
-            ->whereHas('products')
-            ->latest()
-            ->get();
-
-        return Datatables::of($data)
-            ->addIndexColumn()
-            ->addColumn('client', function ($row) {
-                return $row->client ? $row->client->name : '';
-            })
-            ->addColumn('vehicle', function ($row) {
-                return $row->vehicle ? $row->vehicle->brand->name . ' ' . $row->vehicle->model : '';
-            })
-            ->addColumn('service_status', function ($row) {
-                $allCompleted = $row->services->every(fn ($service) => $service->pivot->status === 'completado');
-                $anyStarted = $row->services->contains(fn ($service) => $service->pivot->status === 'iniciado');
-
-                if ($allCompleted) {
-                    return 'Completado';
-                } elseif ($anyStarted) {
-                    return 'Iniciado';
-                } else {
-                    return 'Pendiente';
-                }
-            })
-            ->addColumn('product_status', function ($row) {
-                $totalProducts = $row->products->sum('pivot.quantity');
-                $deliveredProducts = $row->products->where('pivot.status', 'entregado')->sum('pivot.quantity');
-
-                if ($deliveredProducts === $totalProducts) {
-                    return 'Entregado';
-                } elseif ($deliveredProducts > 0) {
-                    return 'Parcialmente Entregado';
-                } else {
-                    return 'Pendiente';
-                }
-            })
-            ->addColumn('time', function ($row) {
-                $completionTime = $row->services->max('pivot.updated_at');
-                $timeElapsed = $row->status === 'Facturado'
-                    ? $row->created_at->diffForHumans($row->updated_at, true)
-                    : $row->created_at->diffForHumans(now(), true);
-                return $timeElapsed;
-            })
-            ->addColumn('action', function ($row) {
-                return route('warehouse-work-orders.show', $row->id);
-            })
-            ->rawColumns(['service_status', 'product_status', 'action'])
-            ->make(true);
-    }
-
-    return view('warehouse-work-orders.index');
-}
-
-    /**
-     * Mostrar detalles de una orden de trabajo en bodega.
-     */
-    public function showWarehouseWorkOrder(WorkOrder $workOrder)
-{
-    $workOrder->load([
-        'vehicle',
-        'client',
-        'services' => function ($query) {
-            $query->with('mechanic'); // Relación con el mecánico asignado
-        },
-        'products',
-        'incidents' => function ($query) {
-            $query->with('reportedBy'); // Relación con el usuario que reportó la incidencia
-        }
-    ]);
-
-    // Obtener los nombres de los mecánicos asignados a los servicios
-    foreach ($workOrder->services as $service) {
-        $service->mechanic_name = User::find($service->pivot->mechanic_id)->name ?? 'Sin asignar';
-    }
-
-    // Obtener los nombres de los mecánicos que reportaron las incidencias
-    foreach ($workOrder->incidents as $incident) {
-        $incident->reported_by_name = User::find($incident->pivot->reported_by)->name ?? 'Sin asignar';
-    }
-
-    $incidents = Incident::all(); // Asegurarse de tener todas las incidencias disponibles
-
-    return view('warehouse-work-orders.show', compact('workOrder', 'incidents'));
-}
-
-
-
-
-    /**
-     * Actualizar el estado de un producto en una orden de trabajo.
-     */
-    public function updateProductStatus(Request $request, WorkOrder $workOrder, $productId)
-{
-    $request->validate([
-        'status' => 'required|string|in:entregado,pendiente',
-    ]);
-
-    $workOrder->products()->updateExistingPivot($productId, ['status' => $request->status]);
-
-    return response()->json(['message' => 'Estado del producto actualizado con éxito.'], 200);
-}
-
-
-    // VISTA DE EJECUTIVOS
-
-    /**
-     * Mostrar órdenes de trabajo para ejecutivos.
-     */
-    public function executiveWorkOrders(Request $request)
-{
-    if ($request->ajax()) {
-        $data = WorkOrder::with(['client', 'vehicle.brand', 'services', 'products'])
-            ->where('executive_id', auth()->user()->id)
-            ->latest()
-            ->get();
-
-        foreach ($data as $workOrder) {
-            $workOrder->time = $this->calculateElapsedTime($workOrder);
-            $workOrder->action = route('executive-work-orders.show', $workOrder->id); // Añadir la URL de la acción
-        }
-
-        return Datatables::of($data)
-            ->addIndexColumn()
-            ->addColumn('client', function ($row) {
-                return $row->client ? $row->client->name : '';
-            })
-            ->addColumn('vehicle', function ($row) {
-                return $row->vehicle ? $row->vehicle->brand->name . ' ' . $row->vehicle->model : '';
-            })
-            ->addColumn('service_status', function ($row) {
-                return $row->services->every(fn ($service) => $service->pivot->status === 'completado') ? 'Completado' : ($row->services->contains(fn ($service) => $service->pivot->status === 'iniciado') ? 'Iniciado' : 'Pendiente');
-            })
-            ->addColumn('product_status', function ($row) {
-                $totalProducts = $row->products->sum('pivot.quantity');
-                $deliveredProducts = $row->products->where('pivot.status', 'entregado')->sum('pivot.quantity');
-
-                return $deliveredProducts === $totalProducts ? 'Entregado' : ($deliveredProducts > 0 ? 'Parcialmente Entregado' : 'Pendiente');
-            })
-            ->addColumn('time', function ($row) {
-                return $row->time;
-            })
-            ->addColumn('status', function ($row) {
-                return $row->status;
-            })
-            ->addColumn('action', function ($row) {
-                return $row->action; // Devolver la URL de la acción
-            })
-            ->rawColumns(['service_status', 'product_status', 'status', 'action'])
-            ->make(true);
-    }
-
-    return view('executive-work-orders.index');
-}
-
-
-
-        /**
-     * Mostrar detalles de una orden de trabajo para ejecutivos.
-     */
-    public function executiveShowWorkOrder(WorkOrder $workOrder)
-    {
-        $workOrder->load([
-            'vehicle',
-            'client',
-            'services' => function ($query) {
-                $query->with('mechanic');
-            },
-            'products',
-            'incidents' => function ($query) {
-                $query->with('reportedBy');
-            }
-        ]);
-
-        $services = Service::all();
-        $products = Product::all();
-        $mechanics = User::role('Mecánico')->get();
-        $incidents = Incident::all();
-
-        foreach ($workOrder->services as $service) {
-            $service->mechanic_name = User::find($service->pivot->mechanic_id)->name ?? 'Sin asignar';
-        }
-
-        foreach ($workOrder->incidents as $incident) {
-            $incident->reported_by_name = User::find($incident->pivot->reported_by)->name ?? 'Sin asignar';
-        }
-
-        return view('executive-work-orders.show', compact('workOrder', 'services', 'products', 'mechanics', 'incidents'));
-    }
-
-    /**
-     * Agregar un servicio a una orden de trabajo.
-     */
     public function addService(Request $request, WorkOrder $workOrder)
     {
         $request->validate([
@@ -867,26 +464,12 @@ private function calculateElapsedTime($workOrder)
             'mechanic_id' => 'required|exists:users,id',
         ]);
 
-        $service = Service::find($request->service_id);
-
-        $workOrder->services()->attach($service->id, [
-            'mechanic_id' => $request->mechanic_id,
-            'status' => 'pendiente',
-        ]);
-
-        $workOrder->subtotal += $service->price;
-        $workOrder->tax = $workOrder->subtotal * ($workOrder->tax_percentage / 100);
-        $workOrder->total = $workOrder->subtotal + $workOrder->tax - $workOrder->discount;
-
-        $workOrder->save();
+        $workOrder->services()->attach($request->service_id, ['mechanic_id' => $request->mechanic_id, 'status' => 'pendiente']);
 
         Alert::success('Éxito', 'Servicio agregado con éxito');
-        return back();
+        return redirect()->route('executive-work-orders.show', $workOrder->id);
     }
 
-    /**
-     * Agregar un producto a una orden de trabajo.
-     */
     public function addProduct(Request $request, WorkOrder $workOrder)
     {
         $request->validate([
@@ -894,91 +477,337 @@ private function calculateElapsedTime($workOrder)
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $productId = $request->input('product_id');
-        $quantity = $request->input('quantity');
-
-        $workOrder->products()->attach($productId, ['quantity' => $quantity, 'status' => 'pendiente']);
+        $workOrder->products()->attach($request->product_id, ['quantity' => $request->quantity, 'status' => 'pendiente']);
 
         Alert::success('Éxito', 'Producto agregado con éxito');
-        return back();
+        return redirect()->route('executive-work-orders.show', $workOrder->id);
     }
 
-    /**
-     * Mostrar la versión imprimible de una orden de trabajo.
-     */
+    public function addRevision(Request $request, WorkOrder $workOrder)
+    {
+        $request->validate([
+            'revision_id' => 'required|exists:revisions,id',
+        ]);
+
+        $workOrder->revisions()->attach($request->revision_id, ['status' => 1]);
+
+        Alert::success('Éxito', 'Revisión agregada con éxito');
+        return redirect()->route('executive-work-orders.show', $workOrder->id);
+    }
+
+    public function getRevisions()
+    {
+        return Revision::all();
+    }
+
     public function printWorkOrder(WorkOrder $workOrder)
     {
-        $workOrder->load(['client', 'vehicle', 'services', 'products', 'createdBy']);
-
-        foreach ($workOrder->services as $service) {
-            $service->mechanic_name = User::find($service->pivot->mechanic_id)->name ?? 'Sin asignar';
-        }
-
-        return view('executive-work-orders.print', compact('workOrder'));
+        $pdf = PDF::loadView('work-orders.print', compact('workOrder'));
+        return $pdf->download('OrdenDeTrabajo_' . $workOrder->id . '.pdf');
     }
 
-       /**
-     * Facturar una orden de trabajo.
-     */
-    public function facturar(Request $request, WorkOrder $workOrder)
+    public function listClients()
     {
-        $incompleteServices = $workOrder->services()->wherePivot('status', '!=', 'completado')->get();
-        $incompleteProducts = $workOrder->products()->wherePivot('status', '!=', 'entregado')->get();
-
-        if ($incompleteServices->isNotEmpty() || $incompleteProducts->isNotEmpty()) {
-            $incompleteDetails = [];
-            if ($incompleteServices->isNotEmpty()) {
-                $incompleteDetails[] = "En el taller no se han terminado estos servicios: " . $incompleteServices->pluck('name')->implode(', ');
-            }
-            if ($incompleteProducts->isNotEmpty()) {
-                $incompleteDetails[] = "Desde bodega no han entregado los productos: " . $incompleteProducts->pluck('name')->implode(', ');
-            }
-            $incompleteDetails[] = "Recuerda a tus compañeros cerrar sus procesos para poder facturar la OT.";
-            return response()->json(['message' => implode(' ', $incompleteDetails)], 400);
-        }
-
-        $workOrder->update(['status' => 'Facturado']);
-
-        return response()->json(['message' => 'La OT ha quedado con estado Facturado. Ya no se pueden hacer cambios.'], 200);
+        $clients = Client::select('id', 'name as text')->get();
+        return response()->json($clients);
     }
 
-    /**
-     * Mostrar la lista de órdenes de trabajo.
-     */
-    public function list(Request $request)
+    public function listVehicles()
+    {
+        $vehicles = Vehicle::select('id', 'license_plate as text')->get();
+        return response()->json($vehicles);
+    }
+
+    public function updateServiceStatus(Request $request, $workOrderId, $serviceId)
+    {
+        $request->validate([
+            'status' => 'required|string|in:pendiente,iniciado,completado',
+        ]);
+
+        DB::table('service_work_order')
+            ->where('work_order_id', $workOrderId)
+            ->where('service_id', $serviceId)
+            ->update(['status' => $request->status]);
+
+        return back()->with('success', 'Estado del servicio actualizado con éxito.');
+    }
+
+    public function addIncident(Request $request, $workOrderId)
+    {
+        $request->validate([
+            'incident_id' => 'required|exists:incidents,id',
+            'observation' => 'required|string|max:255',
+        ]);
+
+        $workOrder = WorkOrder::findOrFail($workOrderId);
+        $workOrder->incidents()->attach($request->incident_id, [
+            'observation' => $request->observation,
+            'reported_by' => auth()->user()->id,
+            'approved' => 0,
+        ]);
+
+        return back()->with('success', 'Incidencia agregada correctamente.');
+    }
+
+    public function mechanicWorkOrders()
+    {
+        return view('mechanic-work-orders.index');
+    }
+
+    public function mechanicWorkOrdersList(Request $request)
     {
         if ($request->ajax()) {
-            \Log::info('Fetching work orders for DataTable');
+            $data = WorkOrder::whereHas('services', function ($query) {
+                $query->where('mechanic_id', auth()->user()->id);
+            })->with(['client', 'vehicle', 'services', 'products'])->get();
 
-            $data = WorkOrder::with(['createdBy', 'client', 'vehicle'])->latest()->get();
-
-            \Log::info('Work orders fetched:', $data->toArray());
-
-            return Datatables::of($data)
+            return DataTables::of($data)
                 ->addIndexColumn()
-                ->addColumn('executive', function ($row) {
-                    return $row->createdBy ? $row->createdBy->name : '';
-                })
                 ->addColumn('client', function ($row) {
-                    return $row->client ? $row->client->name : '';
+                    return $row->client->name;
                 })
                 ->addColumn('vehicle', function ($row) {
-                    return $row->vehicle ? $row->vehicle->brand->name . ' ' . $row->vehicle->model : '';
+                    return $row->vehicle->brand->name . ' ' . $row->vehicle->model;
+                })
+                ->addColumn('service_status', function ($row) {
+                    $statuses = $row->services->pluck('pivot.status')->unique()->toArray();
+                    if (in_array('completado', $statuses) && count($statuses) == 1) {
+                        return '<span class="badge badge-success">Completado</span>';
+                    } elseif (in_array('iniciado', $statuses)) {
+                        return '<span class="badge badge-warning">Iniciado</span>';
+                    } else {
+                        return '<span class="badge badge-danger">Pendiente</span>';
+                    }
+                })
+                ->addColumn('product_status', function ($row) {
+                    $statuses = $row->products->pluck('pivot.status')->unique()->toArray();
+                    if (in_array('entregado', $statuses) && count($statuses) == 1) {
+                        return '<span class="badge badge-success">Entregado</span>';
+                    } else {
+                        return '<span class="badge badge-danger">Pendiente</span>';
+                    }
+                })
+                ->addColumn('time', function ($row) {
+                    $created_at = Carbon::parse($row->created_at);
+                    $end_time = ($row->status == 'Facturado') ? Carbon::parse($row->updated_at) : Carbon::now();
+                    $time_diff = $end_time->diff($created_at);
+
+                    if ($time_diff->d > 0) {
+                        return $time_diff->format('%d días %H:%I:%S');
+                    } else {
+                        return $time_diff->format('%H:%I:%S');
+                    }
+                })
+                ->addColumn('status', function ($row) {
+                    $badgeClass = '';
+                    switch ($row->status) {
+                        case 'Completado':
+                            $badgeClass = 'badge-success';
+                            break;
+                        case 'Facturado':
+                            $badgeClass = 'badge-dark';
+                            break;
+                        case 'Abierto':
+                        case 'Desaprobado':
+                            $badgeClass = 'badge-danger';
+                            break;
+                        case 'Comenzó':
+                        case 'Incidencias':
+                        case 'Aprobada':
+                        case 'Parcial':
+                            $badgeClass = 'badge-warning';
+                            break;
+                        default:
+                            $badgeClass = 'badge-warning';
+                            break;
+                    }
+                    return '<span class="badge ' . $badgeClass . '">' . $row->status . '</span>';
                 })
                 ->addColumn('action', function ($row) {
-                    $btn = '<a href="' . route('work-orders.show', $row->id) . '" class="edit btn btn-info btn-sm"><i class="fas fa-eye"></i></a>';
-                    $btn .= ' <a href="' . route('work-orders.edit', $row->id) . '" class="edit btn btn-secondary btn-sm"><i class="fas fa-edit"></i></a>';
-                    $btn .= ' <form action="' . route('work-orders.destroy', $row->id) . '" method="POST" style="display:inline-block;">
-                            ' . csrf_field() . '
-                            ' . method_field("DELETE") . '
-                            <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
-                        </form>';
-                    return $btn;
+                    return '<a href="' . route('mechanic-work-orders.show', $row->id) . '" class="edit btn btn-primary btn-sm">Ver</a>';
                 })
-                ->rawColumns(['action'])
+                ->rawColumns(['service_status', 'product_status', 'status', 'action'])
                 ->make(true);
         }
 
-        return view('work-orders.list');
+        return view('mechanic-work-orders.index');
+    }
+
+    public function mechanicShowWorkOrder($id)
+    {
+        $workOrder = WorkOrder::with([
+            'client',
+            'vehicle',
+            'services',
+            'products',
+            'revisions.faults' => function ($query) use ($id) {
+                $query->withPivot('status')->wherePivot('work_order_id', $id);
+            },
+            'incidents.reportedBy'
+        ])->findOrFail($id);
+
+        $incidents = Incident::all();
+
+        $revisionsWithFaults = $this->getRevisionsWithFaults($id);
+
+        return view('mechanic-work-orders.show', compact('workOrder', 'incidents', 'revisionsWithFaults'));
+    }
+
+    public function updateMechanicWorkOrderStatus(Request $request, $workOrderId, $serviceId)
+    {
+        $request->validate([
+            'status' => 'required|in:pendiente,iniciado,completado',
+        ]);
+
+        $workOrder = WorkOrder::findOrFail($workOrderId);
+        $service = $workOrder->services()->where('service_id', $serviceId)->firstOrFail();
+
+        if ($service->pivot->mechanic_id != auth()->user()->id) {
+            return response()->json(['message' => 'No tienes permiso para actualizar este servicio'], 403);
+        }
+
+        $service->pivot->status = $request->status;
+        $service->pivot->save();
+
+        return response()->json(['message' => 'Estado del servicio actualizado correctamente']);
+    }
+
+    public function warehouseWorkOrders()
+    {
+        return view('warehouse-work-orders.index');
+    }
+
+    public function warehouseWorkOrdersList(Request $request)
+    {
+        if ($request->ajax()) {
+            $data = WorkOrder::with(['client', 'vehicle', 'services', 'products'])->get();
+
+            return DataTables::of($data)
+                ->addIndexColumn()
+                ->addColumn('client', function ($row) {
+                    return $row->client->name;
+                })
+                ->addColumn('vehicle', function ($row) {
+                    return $row->vehicle->brand->name . ' ' . $row->vehicle->model;
+                })
+                ->addColumn('service_status', function ($row) {
+                    $statuses = $row->services->pluck('pivot.status')->unique()->toArray();
+                    if (in_array('completado', $statuses) && count($statuses) == 1) {
+                        return '<span class="badge badge-success">Completado</span>';
+                    } elseif (in_array('iniciado', $statuses)) {
+                        return '<span class="badge badge-warning">Iniciado</span>';
+                    } else {
+                        return '<span class="badge badge-danger">Pendiente</span>';
+                    }
+                })
+                ->addColumn('product_status', function ($row) {
+                    $statuses = $row->products->pluck('pivot.status')->unique()->toArray();
+                    if (in_array('entregado', $statuses) && count($statuses) == 1) {
+                        return '<span class="badge badge-success">Entregado</span>';
+                    } elseif (in_array('parcialmente_entregado', $statuses)) {
+                        return '<span class="badge badge-warning">Parcialmente Entregado</span>';
+                    } else {
+                        return '<span class="badge badge-danger">Pendiente</span>';
+                    }
+                })
+                ->addColumn('time', function ($row) {
+                    $created_at = Carbon::parse($row->created_at);
+                    $end_time = ($row->status == 'Facturado') ? Carbon::parse($row->updated_at) : Carbon::now();
+                    $time_diff = $end_time->diff($created_at);
+
+                    if ($time_diff->d > 0) {
+                        return $time_diff->format('%d días %H:%I:%S');
+                    } else {
+                        return $time_diff->format('%H:%I:%S');
+                    }
+                })
+                ->addColumn('status', function ($row) {
+                    $badgeClass = '';
+                    switch ($row->status) {
+                        case 'Completado':
+                            $badgeClass = 'badge-success';
+                            break;
+                        case 'Facturado':
+                            $badgeClass = 'badge-dark';
+                            break;
+                        case 'Abierto':
+                        case 'Desaprobado':
+                            $badgeClass = 'badge-danger';
+                            break;
+                        case 'Comenzó':
+                        case 'Incidencias':
+                        case 'Aprobada':
+                        case 'Parcial':
+                            $badgeClass = 'badge-warning';
+                            break;
+                        default:
+                            $badgeClass = 'badge-warning';
+                            break;
+                    }
+                    return '<span class="badge ' . $badgeClass . '">' . $row->status . '</span>';
+                })
+                ->addColumn('action', function ($row) {
+                    return '<a href="' . route('warehouse-work-orders.show', $row->id) . '" class="edit btn btn-primary btn-sm">Ver</a>';
+                })
+                ->rawColumns(['service_status', 'product_status', 'status', 'action'])
+                ->make(true);
+        }
+
+        return view('warehouse-work-orders.index');
+    }
+
+    public function showWarehouseWorkOrder(WorkOrder $workOrder)
+    {
+        return view('warehouse-work-orders.show', compact('workOrder'));
+    }
+
+    public function updateProductStatus(Request $request, WorkOrder $workOrder, Product $product)
+    {
+        $request->validate([
+            'status' => 'required|string|in:pendiente,entregado',
+        ]);
+
+        $workOrder->products()->updateExistingPivot($product->id, ['status' => $request->status]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function updateFaultStatus(Request $request, $workOrderId, $revisionId, $faultId)
+    {
+        $revisionWorkOrder = DB::table('revision_work_order')
+            ->where('work_order_id', $workOrderId)
+            ->where('revision_id', $revisionId)
+            ->where('fault_id', $faultId)
+            ->first();
+
+        if ($revisionWorkOrder) {
+            DB::table('revision_work_order')
+                ->where('work_order_id', $workOrderId)
+                ->where('revision_id', $revisionId)
+                ->where('fault_id', $faultId)
+                ->update(['status' => $request->input('status')]);
+
+            return response()->json(['message' => 'Estado de la revisión actualizado correctamente']);
+        }
+
+        return response()->json(['message' => 'No se pudo actualizar el estado de la revisión'], 400);
+    }
+
+    public function show($id)
+    {
+        $workOrder = WorkOrder::with([
+            'client',
+            'vehicle',
+            'services',
+            'products',
+            'revisions.faults' => function ($query) use ($id) {
+                $query->withPivot('status')->wherePivot('work_order_id', $id);
+            },
+            'incidents'
+        ])->findOrFail($id);
+
+        $incidents = Incident::all();
+
+        return view('mechanic-work-orders.show', compact('workOrder', 'incidents'));
     }
 }

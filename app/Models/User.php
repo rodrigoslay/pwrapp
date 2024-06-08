@@ -47,4 +47,10 @@ class User extends Authenticatable
     {
         $this->attributes['password'] = bcrypt($value);
     }
+    // Relación muchos a muchos con WorkOrder
+    public function workOrders()
+    {
+        return $this->belongsToMany(WorkOrder::class, 'service_work_order', 'mechanic_id', 'work_order_id');
+    }
+
 }
