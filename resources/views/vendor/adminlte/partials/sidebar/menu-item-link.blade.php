@@ -1,3 +1,19 @@
+
+@php
+    $user = Auth::user();
+    $hasRole = true; // Default to true if 'role' key is not set
+
+    // Check if 'role' key exists and set $hasRole accordingly
+    if (isset($item['role'])) {
+        if (is_array($item['role'])) {
+            $hasRole = $user->hasAnyRole($item['role']);
+        } else {
+            $hasRole = $user->hasRole($item['role']);
+        }
+    }
+@endphp
+
+@if ($hasRole)
 <li @isset($item['id']) id="{{ $item['id'] }}" @endisset class="nav-item">
 
     <a class="nav-link {{ $item['class'] }} @isset($item['shift']) {{ $item['shift'] }} @endisset"
@@ -21,3 +37,4 @@
     </a>
 
 </li>
+@endif

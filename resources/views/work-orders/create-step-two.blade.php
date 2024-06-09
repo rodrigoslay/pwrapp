@@ -7,8 +7,8 @@
 @stop
 
 @section('content')
-<div class="container">
-    <div class="row">
+
+<div class="container-fluid">
         <div class="col-md-12">
             <div class="card card-default">
                 <div class="card-header">
@@ -111,7 +111,7 @@
             </div>
         </div>
     </div>
-</div>
+
 @stop
 
 @section('css')

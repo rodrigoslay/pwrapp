@@ -1,84 +1,65 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\WorkOrder;
+use App\Models\Service;
+use App\Models\Product;
+use App\Models\Revision;
+use App\Models\Incident;
+use App\Models\User;
 
 class DashboardController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function index()
-    {
-        return view('dashboard');
-    }
+{
+    // Estadísticas de órdenes de trabajo
+    $totalOtCreadas = WorkOrder::count();
+    $totalOtFacturadas = WorkOrder::where('status', 'Facturado')->count();
+    $totalOtEnProceso = WorkOrder::where('status', '!=', 'Facturado')->where('status', '!=', 'Abierto')->count();
+    $totalOtSinIniciar = WorkOrder::where('status', 'Abierto')->count();
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
-    }
+    // Estadísticas de servicios
+    $totalServiciosCompletados = Service::whereHas('workOrders', function($query) {
+        $query->where('service_work_order.status', 'completado');
+    })->count();
+    $totalServiciosSinCompletar = Service::whereHas('workOrders', function($query) {
+        $query->where('service_work_order.status', '!=', 'completado');
+    })->count();
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
-    {
-        //
-    }
+    // Estadísticas de productos
+    $totalProductosEntregados = Product::whereHas('workOrders', function($query) {
+        $query->where('product_work_order.status', 'entregado');
+    })->count();
+    $totalProductosSinEntregar = Product::whereHas('workOrders', function($query) {
+        $query->where('product_work_order.status', '!=', 'entregado');
+    })->count();
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        //
-    }
+    // Estadísticas de incidencias
+    $totalIncidenciasEncontradas = \DB::table('incident_work_order')->count();
+    $totalIncidenciasAprobadas = \DB::table('incident_work_order')->where('approved', 1)->count();
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        //
-    }
+    // Top 5 estadísticas
+    $topServiciosMasRequeridos = Service::withCount('workOrders')->orderBy('work_orders_count', 'desc')->take(5)->get();
+    $topProductosMasComprados = Product::withCount('workOrders')->orderBy('work_orders_count', 'desc')->take(5)->get();
+    $topRevisionesMasRequeridas = Revision::withCount('workOrders')->orderBy('work_orders_count', 'desc')->take(5)->get();
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
-        //
-    }
+    // Top 5 usuarios
+    $topUsuariosConMasServiciosCompletados = User::role('Mecánico')->withCount(['workOrders as completed_services_count' => function ($query) {
+        $query->where('service_work_order.status', 'completado');
+    }])->orderBy('completed_services_count', 'desc')->take(5)->get();
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy($id)
-    {
-        //
-    }
+    $topUsuariosConMasOtCreadas = User::withCount('createdWorkOrders')->orderBy('created_work_orders_count', 'desc')->take(5)->get();
+    $topUsuariosConMasOtFacturadas = User::withCount(['facturadasWorkOrders as facturadas_count'])->orderBy('facturadas_count', 'desc')->take(5)->get();
+
+    return view('dashboard', compact(
+        'totalOtCreadas', 'totalOtFacturadas', 'totalOtEnProceso', 'totalOtSinIniciar',
+        'totalServiciosCompletados', 'totalServiciosSinCompletar',
+        'totalProductosEntregados', 'totalProductosSinEntregar',
+        'totalIncidenciasEncontradas', 'totalIncidenciasAprobadas',
+        'topServiciosMasRequeridos', 'topProductosMasComprados', 'topRevisionesMasRequeridas',
+        'topUsuariosConMasServiciosCompletados', 'topUsuariosConMasOtCreadas', 'topUsuariosConMasOtFacturadas'
+    ));
+}
+
 }

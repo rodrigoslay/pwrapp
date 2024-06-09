@@ -311,6 +311,9 @@ return [
     ],
     [
         'header' => 'Menú Ejecutivo',
+        'role' => 'Ejecutivo',
+        'can' => 'Ejecutivo',
+
     ],
     [
         'text'        => 'Ejecutivo',
@@ -328,9 +331,7 @@ return [
                 //'can'  => 'executive-access', // Asegúrate de definir este permiso en tu política de acceso
             ],
         ],
-    ],
-    [
-        'header' => 'Menú Mecánico',
+        'role' => 'Ejecutivo',
     ],
     [
         'text'        => 'Mecánico',
@@ -342,9 +343,7 @@ return [
                 'icon' => 'fas fa-fw fa-user-cog',
             ],
         ],
-    ],
-    [
-        'header' => 'Menú Bodega',
+        'role' => 'Mecánico',
     ],
     [
         'text'        => 'Bodega',
@@ -356,10 +355,7 @@ return [
                 'icon' => 'fas fa-fw fa-boxes',
             ],
         ],
-    ],
-
-    [
-        'header' => 'Gestión de Taller',
+        'role' => 'Bodeguero',
     ],
     [
         'text'        => 'Usuarios',
@@ -384,47 +380,57 @@ return [
                 'active' => ['users/permissions/*'],
             ],
         ],
+        'role' => 'Administrador',
+
     ],
 
     [
         'text'        => 'Grupos de Clientes',
         'route'       => 'client-groups.index',
         'icon'        => 'fas fa-fw fa-users-cog',
+        'role' => 'Administrador',
     ],
     [
         'text'        => 'Clientes',
         'route'       => 'clients.index',
         'icon'        => 'fas fa-fw fa-user-friends',
+        'role' => 'Administrador',
     ],
     [
         'text'        => 'Servicios',
         'route'       => 'services.index',
         'icon'        => 'fas fa-fw fa-concierge-bell',
+        'role' => 'Administrador',
     ],
     [
         'text'        => 'Incidentes',
         'route'       => 'incidents.index',
         'icon'        => 'fas fa-fw fa-exclamation-triangle',
+        'role' => 'Administrador',
     ],
     [
         'text'        => 'Productos',
         'route'       => 'products.index',
         'icon'        => 'fas fa-fw fa-box-open',
+        'role' => 'Administrador',
     ],
     [
         'text'        => 'Reportes',
         'route'       => 'reports.index',
         'icon'        => 'fas fa-fw fa-chart-line',
+        'role' => 'Administrador',
     ],
     [
         'text'        => 'Marcas',
         'route'       => 'brands.index',
         'icon'        => 'fas fa-fw fa-car',
+        'role' => 'Administrador',
     ],
     [
         'text'        => 'Vehículos',
         'route'       => 'vehicles.index',
         'icon'        => 'fas fa-fw fa-car-side',
+        'role' => 'Administrador',
     ],
     [
         'header' => 'Configuración de la Cuenta',
@@ -438,6 +444,7 @@ return [
         'text' => 'Configuraciones',
         'url'  => 'settings',
         'icon' => 'fas fa-fw fa-cogs',
+        'role' => 'Administrador',
     ],
 
 ],

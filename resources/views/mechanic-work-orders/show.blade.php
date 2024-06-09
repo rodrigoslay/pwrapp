@@ -274,6 +274,10 @@
                         icon: 'success',
                         title: 'Éxito',
                         text: response.message,
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            updateWorkOrderStatus(); 
+                        }
                     });
                 },
                 error: function(response) {
@@ -297,6 +301,10 @@
                         icon: 'success',
                         title: 'Éxito',
                         text: response.message,
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            updateWorkOrderStatus();
+                        }
                     });
                 },
                 error: function(response) {
@@ -308,6 +316,23 @@
                 }
             });
         });
+
+        function updateWorkOrderStatus() {
+            $.ajax({
+                url: '{{ route("work-orders.update-status", $workOrder->id) }}',
+                type: 'PUT',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                },
+                success: function(response) {
+                    console.log('Estado de la OT actualizado');
+                    location.reload(); // Recargar la página después de actualizar el estado de la OT
+                },
+                error: function(response) {
+                    console.error('Error al actualizar el estado de la OT');
+                }
+            });
+        }
     });
     </script>
 @stop

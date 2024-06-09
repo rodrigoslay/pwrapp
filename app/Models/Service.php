@@ -24,4 +24,11 @@ class Service extends Model
         return $this->belongsToMany(User::class, 'service_work_order', 'service_id', 'mechanic_id')->withTimestamps();
     }
 
+    public function workOrders()
+    {
+        return $this->belongsToMany(WorkOrder::class, 'service_work_order')
+                    ->withPivot('mechanic_id', 'status')
+                    ->withTimestamps();
+    }
+
 }

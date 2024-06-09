@@ -26,6 +26,8 @@ use Illuminate\Support\Facades\Storage;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Carbon;
 use Yajra\DataTables\Facades\DataTables;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 if (!function_exists('array_flatten')) {
     function array_flatten($array)
@@ -153,12 +155,21 @@ class WorkOrderController extends Controller
     }
 
     public function storeStepTwo(Request $request)
-    {
-        $selectedRevisions = Revision::whereIn('id', $request->revisions)->with('faults')->get();
-        session(['selected_services' => $request->services, 'selected_revisions' => $selectedRevisions]);
+{
+    // Validar que al menos un servicio o revisión esté seleccionado
+    $request->validate([
+        'services' => 'array',
+        'revisions' => 'array',
+    ]);
 
-        return redirect()->route('work-orders.create-step-three');
-    }
+    // Obtener las revisiones seleccionadas y sus fallos asociados
+    $selectedRevisions = $request->revisions ? Revision::whereIn('id', $request->revisions)->with('faults')->get() : collect();
+
+    // Guardar los servicios y revisiones seleccionados en la sesión
+    session(['selected_services' => $request->services, 'selected_revisions' => $selectedRevisions]);
+
+    return redirect()->route('work-orders.create-step-three');
+}
 
     public function createStepThree()
     {
@@ -167,18 +178,26 @@ class WorkOrderController extends Controller
     }
 
     public function storeStepThree(Request $request)
-    {
-        $selectedProducts = array_filter($request->products, function ($value, $key) use ($request) {
-            return $request->has('products.' . $key);
-        }, ARRAY_FILTER_USE_BOTH);
+{
+    $validatedData = $request->validate([
+        'products' => 'array',
+        'products.*' => 'exists:products,id',
+        'quantities' => 'array',
+        'quantities.*' => 'integer|min:1',
+    ]);
 
-        session([
-            'selected_products' => $selectedProducts,
-            'products_quantities' => $request->quantities,
-        ]);
+    $selectedProducts = $validatedData['products'] ?? [];
+    $quantities = $validatedData['quantities'] ?? [];
 
-        return redirect()->route('work-orders.create-step-four');
-    }
+    session([
+        'selected_products' => $selectedProducts,
+        'products_quantities' => $quantities,
+    ]);
+
+    return redirect()->route('work-orders.create-step-four');
+}
+
+
 
     public function createStepFour()
 {
@@ -197,27 +216,36 @@ class WorkOrderController extends Controller
 
 
 
-    public function storeStepFour(Request $request)
-    {
-        session(['mechanic_assignments' => $request->mechanics]);
-        return redirect()->route('work-orders.create-step-five');
+public function storeStepFour(Request $request)
+{
+    $selectedServices = session('selected_services', []);
+    $selectedProducts = session('selected_products', []);
+    $selectedRevisions = session('selected_revisions', []);
+
+    if (empty($selectedServices) && empty($selectedProducts) && empty($selectedRevisions)) {
+        return redirect()->route('work-orders.create-step-four')->with('error', 'Debe agregar al menos un servicio, producto o revisión para continuar.');
     }
 
-    public function createStepFive()
+    session(['mechanic_assignments' => $request->mechanics]);
+    return redirect()->route('work-orders.create-step-five');
+}
+
+
+public function createStepFive()
 {
-    $services = session('selected_services') ? Service::whereIn('id', session('selected_services'))->with(['mechanics'])->get() : [];
+    $services = session('selected_services') ? Service::whereIn('id', session('selected_services'))->with(['mechanics'])->get() : collect([]);
     $selectedRevisions = session('selected_revisions') ? collect(session('selected_revisions'))->pluck('id')->toArray() : [];
-    $revisions = !empty($selectedRevisions) ? Revision::whereIn('id', $selectedRevisions)->with('faults')->get() : [];
+    $revisions = !empty($selectedRevisions) ? Revision::whereIn('id', $selectedRevisions)->with('faults')->get() : collect([]);
     $mechanicAssignments = session('mechanic_assignments', []);
     $productsQuantities = session('products_quantities', []);
 
     $selectedProducts = session('selected_products', []);
-    $products = !empty($selectedProducts) ? Product::whereIn('id', $selectedProducts)->get() : [];
+    $products = !empty($selectedProducts) ? Product::whereIn('id', $selectedProducts)->get() : collect([]);
     $client = session('client');
     $vehicle = session('vehicle');
 
-    $mechanicIds = array_values($mechanicAssignments);
-    $mechanicNames = User::whereIn('id', $mechanicIds)->get()->pluck('name', 'id');
+    $mechanicIds = !empty($mechanicAssignments) ? array_values($mechanicAssignments) : [];
+    $mechanicNames = !empty($mechanicIds) ? User::whereIn('id', $mechanicIds)->get()->pluck('name', 'id') : collect([]);
 
     return view('work-orders.create-step-five', compact('services', 'products', 'revisions', 'client', 'vehicle', 'mechanicAssignments', 'productsQuantities', 'mechanicNames'));
 }
@@ -227,15 +255,21 @@ public function storeStepFive(Request $request)
 {
     DB::beginTransaction();
     try {
-        $serviceIds = array_column($request->services, 'id');
-        $productIds = array_column($request->products, 'id');
+        $serviceIds = array_column($request->services ?? [], 'id');
+        $productIds = array_column($request->products ?? [], 'id');
+        $revisionIds = array_column($request->revisions ?? [], 'id');
+
+        if (empty($serviceIds) && empty($productIds) && empty($revisionIds)) {
+            return redirect()->route('work-orders.create-step-five')->withErrors(['message' => 'Debe seleccionar al menos un servicio, producto o revisión.']);
+        }
 
         $services = Service::whereIn('id', $serviceIds)->get();
         $products = Product::whereIn('id', $productIds)->get();
+        $quantities = session('products_quantities', []);
 
         $subtotal = $services->sum('price') +
-            $products->sum(function ($product) use ($request) {
-                return $product->price * collect($request->products)->firstWhere('id', $product->id)['quantity'];
+            $products->sum(function ($product) use ($quantities) {
+                return $product->price * ($quantities[$product->id] ?? 1);
             });
 
         $client = Client::find($request->client_id);
@@ -248,7 +282,7 @@ public function storeStepFive(Request $request)
         $workOrder->client_id = $request->client_id;
         $workOrder->vehicle_id = $request->vehicle_id;
         $workOrder->entry_mileage = $request->entry_mileage;
-        $workOrder->status = 'Abierto';
+        $workOrder->status = 'Iniciado';
         $workOrder->subtotal = $subtotal;
         $workOrder->tax = $tax;
         $workOrder->total = $total;
@@ -270,7 +304,7 @@ public function storeStepFive(Request $request)
 
         if ($request->has('products')) {
             foreach ($request->products as $productData) {
-                $quantity = $request->quantities[$productData['id']] ?? 1;
+                $quantity = $quantities[$productData['id']] ?? 1;
                 $workOrder->products()->attach($productData['id'], [
                     'quantity' => $quantity,
                     'status' => 'pendiente'
@@ -305,6 +339,8 @@ public function storeStepFive(Request $request)
         return redirect()->route('work-orders.create-step-five')->withErrors(['message' => 'Error al crear la orden de trabajo: ' . $e->getMessage()]);
     }
 }
+
+
 
 
     private function getMechanicServiceCounts()
@@ -390,38 +426,44 @@ public function storeStepFive(Request $request)
     }
 
     public function executiveShowWorkOrder($id)
-    {
-        $workOrder = WorkOrder::with([
-            'client',
-            'vehicle',
-            'services',
-            'products',
-            'revisions.faults' => function ($query) use ($id) {
-                $query->withPivot('status')->wherePivot('work_order_id', $id);
-            },
-            'incidents' => function ($query) {
-                $query->with('reportedBy', 'approvedBy');
-            }
-        ])->findOrFail($id);
+{
+    $workOrder = WorkOrder::with([
+        'client',
+        'vehicle',
+        'services',
+        'products',
+        'revisions.faults' => function ($query) use ($id) {
+            $query->withPivot('status')->wherePivot('work_order_id', $id);
+        },
+        'incidents' => function ($query) {
+            $query->with('reportedBy', 'approvedBy');
+        }
+    ])->findOrFail($id);
 
-        $servicesList = Service::all();
-        $mechanics = User::role('Mecánico')->get();
-        $productsList = Product::all();
-        $revisionsList = Revision::all();
+    $hasPendingIncidents = $workOrder->incidents()->wherePivot('approved', 0)->exists();
+    $hasFaults = $workOrder->revisions()->wherePivot('status', 0)->exists();
 
-        $revisionsWithFaults = $this->getRevisionsWithFaults($id);
+    $servicesList = Service::all();
+    $mechanics = User::role('Mecánico')->get();
+    $productsList = Product::all();
+    $revisionsList = Revision::all();
 
-        return view('executive-work-orders.show', compact('workOrder', 'servicesList', 'mechanics', 'productsList', 'revisionsList', 'revisionsWithFaults'));
-    }
+    $revisionsWithFaults = $this->getRevisionsWithFaults($id);
 
-    private function getRevisionsWithFaults($workOrderId)
-    {
-        return Revision::whereHas('workOrders', function ($query) use ($workOrderId) {
-            $query->where('work_order_id', $workOrderId);
-        })->with(['faults' => function ($query) use ($workOrderId) {
-            $query->wherePivot('work_order_id', $workOrderId);
-        }])->get();
-    }
+    return view('executive-work-orders.show', compact('workOrder', 'servicesList', 'mechanics', 'productsList', 'revisionsList', 'revisionsWithFaults', 'hasPendingIncidents', 'hasFaults'));
+}
+
+
+
+private function getRevisionsWithFaults($workOrderId)
+{
+    return Revision::whereHas('workOrders', function ($query) use ($workOrderId) {
+        $query->where('work_order_id', $workOrderId);
+    })->with(['faults' => function ($query) use ($workOrderId) {
+        $query->wherePivot('work_order_id', $workOrderId);
+    }])->get();
+}
+
 
     public function updateIncidentStatus(Request $request, $workOrderId, $incidentId)
     {
@@ -440,22 +482,24 @@ public function storeStepFive(Request $request)
     }
 
     public function facturar(Request $request, WorkOrder $workOrder)
-    {
-        $incompleteServices = $workOrder->services()->wherePivot('status', '!=', 'completado')->count();
-        if ($incompleteServices > 0) {
-            return response()->json(['status' => 'error', 'message' => 'No se puede facturar porque hay servicios incompletos.'], 400);
-        }
+{
+    $allServicesCompleted = $workOrder->services()->wherePivot('status', '!=', 'completado')->doesntExist();
+    $allProductsDelivered = $workOrder->products()->wherePivot('status', '!=', 'entregado')->doesntExist();
+    $hasPendingIncidents = $workOrder->incidents()->wherePivot('approved', 0)->exists();
 
-        $undeliveredProducts = $workOrder->products()->wherePivot('status', '!=', 'entregado')->count();
-        if ($undeliveredProducts > 0) {
-            return response()->json(['status' => 'error', 'message' => 'No se puede facturar porque hay productos no entregados.'], 400);
-        }
-
-        $workOrder->status = 'Facturado';
-        $workOrder->save();
-
-        return response()->json(['status' => 'success', 'message' => 'Orden de trabajo facturada correctamente.']);
+    if (!$allServicesCompleted || !$allProductsDelivered || $hasPendingIncidents) {
+        return response()->json(['status' => 'error', 'message' => 'No se puede facturar porque hay servicios incompletos, productos no entregados o incidencias pendientes.'], 400);
     }
+
+    $workOrder->status = 'Facturado';
+    $workOrder->save();
+
+    // Enviar correo electrónico al cliente
+    \Mail::to($workOrder->client->email)->send(new \App\Mail\WorkOrderInvoiceMail($workOrder));
+
+    return response()->json(['status' => 'success', 'message' => 'Orden de trabajo facturada correctamente.']);
+}
+
 
     public function addService(Request $request, WorkOrder $workOrder)
     {
@@ -465,6 +509,8 @@ public function storeStepFive(Request $request)
         ]);
 
         $workOrder->services()->attach($request->service_id, ['mechanic_id' => $request->mechanic_id, 'status' => 'pendiente']);
+            // Actualizar estado de la OT
+    $this->updateWorkOrderStatus($workOrder);
 
         Alert::success('Éxito', 'Servicio agregado con éxito');
         return redirect()->route('executive-work-orders.show', $workOrder->id);
@@ -478,33 +524,88 @@ public function storeStepFive(Request $request)
         ]);
 
         $workOrder->products()->attach($request->product_id, ['quantity' => $request->quantity, 'status' => 'pendiente']);
+            // Actualizar estado de la OT
+    $this->updateWorkOrderStatus($workOrder);
 
         Alert::success('Éxito', 'Producto agregado con éxito');
         return redirect()->route('executive-work-orders.show', $workOrder->id);
     }
 
-    public function addRevision(Request $request, WorkOrder $workOrder)
-    {
-        $request->validate([
-            'revision_id' => 'required|exists:revisions,id',
-        ]);
 
-        $workOrder->revisions()->attach($request->revision_id, ['status' => 1]);
 
-        Alert::success('Éxito', 'Revisión agregada con éxito');
-        return redirect()->route('executive-work-orders.show', $workOrder->id);
+public function addRevision(Request $request, $workOrderId)
+{
+    $request->validate([
+        'revision_id' => 'required|exists:revisions,id',
+    ]);
+
+    $workOrder = WorkOrder::findOrFail($workOrderId);
+    $revisionId = $request->input('revision_id');
+
+    // Obtener los fallos asociados a la revisión
+    $faults = Revision::find($revisionId)->faults;
+
+    // Insertar los fallos en la tabla pivot
+    foreach ($faults as $fault) {
+        $existingEntry = DB::table('revision_work_order')
+            ->where('revision_id', $revisionId)
+            ->where('work_order_id', $workOrderId)
+            ->where('fault_id', $fault->id)
+            ->first();
+
+        if (!$existingEntry) {
+            $workOrder->revisions()->attach($revisionId, ['fault_id' => $fault->id, 'status' => 1]);
+                // Actualizar estado de la OT
+    $this->updateWorkOrderStatus($workOrder);
+        }
     }
+
+    Alert::success('Éxito', 'Revisión agregada con éxito');
+    return redirect()->route('executive-work-orders.show', $workOrder->id);
+}
+
 
     public function getRevisions()
     {
         return Revision::all();
     }
 
-    public function printWorkOrder(WorkOrder $workOrder)
-    {
-        $pdf = PDF::loadView('work-orders.print', compact('workOrder'));
-        return $pdf->download('OrdenDeTrabajo_' . $workOrder->id . '.pdf');
-    }
+    public function printWorkOrder($id)
+{
+    set_time_limit(120);
+
+    Log::info('Inicio de generación de PDF para OT ID: ' . $id);
+
+    $workOrder = WorkOrder::with([
+        'client',
+        'vehicle.brand',
+        'services.mechanics',
+        'products',
+        'revisions.faults' => function ($query) use ($id) {
+            $query->withPivot('status')->wherePivot('work_order_id', $id);
+        },
+        'incidents.reportedBy'
+    ])->findOrFail($id);
+
+    Log::info('Datos cargados para OT ID: ' . $id);
+
+    $revisionsWithFaults = $this->getRevisionsWithFaults($id);
+
+    Log::info('Revisiones con fallos obtenidas para OT ID: ' . $id);
+
+    $pdf = Pdf::loadView('executive-work-orders.print', [
+        'workOrder' => $workOrder,
+        'revisionsWithFaults' => $revisionsWithFaults
+    ]);
+
+    Log::info('PDF generado para OT ID: ' . $id);
+
+    return $pdf->download('OrdenDeTrabajo_' . $workOrder->id . '.pdf');
+}
+
+
+
+
 
     public function listClients()
     {
@@ -519,18 +620,21 @@ public function storeStepFive(Request $request)
     }
 
     public function updateServiceStatus(Request $request, $workOrderId, $serviceId)
-    {
-        $request->validate([
-            'status' => 'required|string|in:pendiente,iniciado,completado',
-        ]);
+{
+    $request->validate([
+        'status' => 'required|string|in:pendiente,iniciado,completado',
+    ]);
 
-        DB::table('service_work_order')
-            ->where('work_order_id', $workOrderId)
-            ->where('service_id', $serviceId)
-            ->update(['status' => $request->status]);
+    DB::table('service_work_order')
+        ->where('work_order_id', $workOrderId)
+        ->where('service_id', $serviceId)
+        ->update(['status' => $request->status]);
 
-        return back()->with('success', 'Estado del servicio actualizado con éxito.');
-    }
+    $workOrder = WorkOrder::findOrFail($workOrderId);
+    $this->updateWorkOrderStatus($workOrder);
+
+    return response()->json(['success' => true, 'message' => 'Estado del servicio actualizado con éxito.']);
+}
 
     public function addIncident(Request $request, $workOrderId)
     {
@@ -545,6 +649,9 @@ public function storeStepFive(Request $request)
             'reported_by' => auth()->user()->id,
             'approved' => 0,
         ]);
+
+            // Actualizar estado de la OT
+    $this->updateWorkOrderStatus($workOrder);
 
         return back()->with('success', 'Incidencia agregada correctamente.');
     }
@@ -654,23 +761,25 @@ public function storeStepFive(Request $request)
     }
 
     public function updateMechanicWorkOrderStatus(Request $request, $workOrderId, $serviceId)
-    {
-        $request->validate([
-            'status' => 'required|in:pendiente,iniciado,completado',
-        ]);
+{
+    $request->validate([
+        'status' => 'required|in:pendiente,iniciado,completado',
+    ]);
 
-        $workOrder = WorkOrder::findOrFail($workOrderId);
-        $service = $workOrder->services()->where('service_id', $serviceId)->firstOrFail();
+    $workOrder = WorkOrder::findOrFail($workOrderId);
+    $service = $workOrder->services()->where('service_id', $serviceId)->firstOrFail();
 
-        if ($service->pivot->mechanic_id != auth()->user()->id) {
-            return response()->json(['message' => 'No tienes permiso para actualizar este servicio'], 403);
-        }
-
-        $service->pivot->status = $request->status;
-        $service->pivot->save();
-
-        return response()->json(['message' => 'Estado del servicio actualizado correctamente']);
+    if ($service->pivot->mechanic_id != auth()->user()->id) {
+        return response()->json(['message' => 'No tienes permiso para actualizar este servicio'], 403);
     }
+
+    $service->pivot->status = $request->status;
+    $service->pivot->save();
+
+    $this->updateWorkOrderStatus($workOrder);
+
+    return response()->json(['message' => 'Estado del servicio actualizado correctamente']);
+}
 
     public function warehouseWorkOrders()
     {
@@ -756,10 +865,25 @@ public function storeStepFive(Request $request)
         return view('warehouse-work-orders.index');
     }
 
-    public function showWarehouseWorkOrder(WorkOrder $workOrder)
-    {
-        return view('warehouse-work-orders.show', compact('workOrder'));
-    }
+    public function showWarehouseWorkOrder($id)
+{
+    $workOrder = WorkOrder::with([
+        'client',
+        'vehicle',
+        'services',
+        'products',
+        'revisions.faults' => function ($query) use ($id) {
+            $query->withPivot('status')->wherePivot('work_order_id', $id);
+        },
+        'incidents.reportedBy',
+        'incidents.approvedBy'
+    ])->findOrFail($id);
+
+    $revisionsWithFaults = $this->getRevisionsWithFaults($id);
+
+    return view('warehouse-work-orders.show', compact('workOrder', 'revisionsWithFaults'));
+}
+
 
     public function updateProductStatus(Request $request, WorkOrder $workOrder, Product $product)
     {
@@ -768,30 +892,35 @@ public function storeStepFive(Request $request)
         ]);
 
         $workOrder->products()->updateExistingPivot($product->id, ['status' => $request->status]);
+            // Actualizar estado de la OT
+    $this->updateWorkOrderStatus($workOrder);
 
         return response()->json(['success' => true]);
     }
 
     public function updateFaultStatus(Request $request, $workOrderId, $revisionId, $faultId)
-    {
-        $revisionWorkOrder = DB::table('revision_work_order')
+{
+    $revisionWorkOrder = DB::table('revision_work_order')
+        ->where('work_order_id', $workOrderId)
+        ->where('revision_id', $revisionId)
+        ->where('fault_id', $faultId)
+        ->first();
+
+    if ($revisionWorkOrder) {
+        DB::table('revision_work_order')
             ->where('work_order_id', $workOrderId)
             ->where('revision_id', $revisionId)
             ->where('fault_id', $faultId)
-            ->first();
+            ->update(['status' => $request->input('status')]);
 
-        if ($revisionWorkOrder) {
-            DB::table('revision_work_order')
-                ->where('work_order_id', $workOrderId)
-                ->where('revision_id', $revisionId)
-                ->where('fault_id', $faultId)
-                ->update(['status' => $request->input('status')]);
+        $workOrder = WorkOrder::findOrFail($workOrderId);
+        $this->updateWorkOrderStatus($workOrder);
 
-            return response()->json(['message' => 'Estado de la revisión actualizado correctamente']);
-        }
-
-        return response()->json(['message' => 'No se pudo actualizar el estado de la revisión'], 400);
+        return response()->json(['success' => true, 'message' => 'Estado de la revisión actualizado correctamente.']);
     }
+
+    return response()->json(['error' => true, 'message' => 'No se pudo actualizar el estado de la revisión'], 400);
+}
 
     public function show($id)
     {
@@ -810,4 +939,46 @@ public function storeStepFive(Request $request)
 
         return view('mechanic-work-orders.show', compact('workOrder', 'incidents'));
     }
+    private function updateWorkOrderStatus(WorkOrder $workOrder)
+    {
+        $allServicesPending = $workOrder->services()->wherePivot('status', '!=', 'pendiente')->doesntExist();
+        $allProductsPending = $workOrder->products()->wherePivot('status', '!=', 'pendiente')->doesntExist();
+        $allServicesCompleted = $workOrder->services()->wherePivot('status', '!=', 'completado')->doesntExist();
+        $allProductsDelivered = $workOrder->products()->wherePivot('status', '!=', 'entregado')->doesntExist();
+        $hasPendingIncidents = $workOrder->incidents()->wherePivot('approved', 0)->exists();
+        $hasFaults = $workOrder->revisions()->wherePivot('status', 0)->exists();
+
+        // Contar incidencias aprobadas y rechazadas
+        $approvedIncidentsCount = $workOrder->incidents()->wherePivot('approved', 1)->count();
+        $rejectedIncidentsCount = $workOrder->incidents()->wherePivot('approved', -1)->count();
+        $totalIncidentsCount = $workOrder->incidents()->count();
+
+        if (!$hasPendingIncidents && $allServicesPending && $allProductsPending) {
+            $workOrder->status = 'Iniciado';
+        } elseif ($hasPendingIncidents) {
+            $workOrder->status = 'Incidencias';
+        } elseif ($allServicesCompleted && $allProductsDelivered && !$hasPendingIncidents) {
+            $workOrder->status = 'Completado';
+        } elseif ($approvedIncidentsCount == $totalIncidentsCount && $totalIncidentsCount > 0) {
+            $workOrder->status = 'Aprobado';
+        } elseif ($approvedIncidentsCount > 0 && $rejectedIncidentsCount > 0) {
+            $workOrder->status = 'Parcial';
+        } elseif ($rejectedIncidentsCount == $totalIncidentsCount && $totalIncidentsCount > 0) {
+            $workOrder->status = 'Rechazado';
+        } else {
+            $workOrder->status = 'En Proceso';
+        }
+
+        $workOrder->save();
+    }
+
+public function updateStatus($workOrderId)
+{
+    $workOrder = WorkOrder::findOrFail($workOrderId);
+    $this->updateWorkOrderStatus($workOrder);
+
+    return response()->json(['message' => 'Estado de la OT actualizado correctamente']);
+}
+
+
 }

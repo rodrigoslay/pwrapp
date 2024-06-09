@@ -94,9 +94,8 @@
                     </div>
 
                     <!-- Revisiones -->
-                    <!-- Revisiones -->
                     <div class="row">
-                        <div class="col-12">
+                        <div class="col-12 table-responsive">
                             <h4>Revisiones</h4>
                             <div id="accordion">
                                 @forelse ($revisions as $revision)
@@ -116,15 +115,16 @@
                                                 <ul class="list-group">
                                                     <li class="list-group-item">
                                                         <span class="float-right">
-                                                            Los Fallos estan con estatus buenos hasta que el mecanico los revise.
+                                                            Los Fallos están con estatus buenos hasta que el mecánico los
+                                                            revise.
                                                             <span class="badge badge-success"><i
                                                                     class="fas fa-check-circle"></i></span>
                                                         </span>
                                                     </li>
-                                                    
+
                                                 </ul>
                                             </div>
-                                        </-div>
+                                        </div>
                                     </div>
                                 @empty
                                     <p>No hay revisiones que hacer.</p>
@@ -135,16 +135,18 @@
 
                     <!-- Resumen de Costos -->
                     <div class="row">
-                        <div class="col-12">
+                        <div class="col-12 table-responsive">
                             <h4>Resumen de Costos</h4>
                             @php
                                 use App\Helpers\CurrencyHelper;
 
                                 $subtotal =
-                                    $services->sum('price') +
-                                    $products->sum(function ($product) {
-                                        return (session('products_quantities')[$product->id] ?? 0) * $product->price;
-                                    });
+                                    ($services ? $services->sum('price') : 0) +
+                                    ($products
+                                        ? $products->sum(function ($product) use ($productsQuantities) {
+                                            return ($productsQuantities[$product->id] ?? 0) * $product->price;
+                                        })
+                                        : 0);
 
                                 $discount_percentage = optional($client->clientGroup)->discount_percentage ?? 0;
                                 $discount = $subtotal * ($discount_percentage / 100);
@@ -152,7 +154,7 @@
                                 $tax = ($subtotal - $discount) * 0.19; // Assuming 19% tax rate
                                 $total = $subtotal - $discount + $tax;
                             @endphp
-                            <table class="table">
+                            <table class="table table-striped">
                                 <tr>
                                     <th>Subtotal:</th>
                                     <td>{{ CurrencyHelper::format($subtotal) }}</td>
@@ -174,7 +176,7 @@
                     </div>
 
                     <!-- Botones -->
-                    <div class="row no-print">
+                    <div class="row no-print my-4">
                         <div class="col-12">
                             <form action="{{ route('work-orders.store-step-five') }}" method="POST">
                                 @csrf
@@ -207,11 +209,10 @@
                                     @endforeach
                                 @endforeach
 
-
                                 <button type="submit" class="btn btn-primary float-right" style="margin-right: 10px;">
                                     <i class="fas fa-check"></i> Crear Orden de Trabajo
                                 </button>
-                                <a href="{{ route('work-orders.create-step-four') }}" class="btn btn-default">
+                                <a href="{{ route('work-orders.create-step-four') }}" class="btn btn-default float-right" style="margin-right: 10px;">
                                     <i class="fas fa-arrow-left"></i> Volver a Asignar Mecánicos
                                 </a>
                             </form>

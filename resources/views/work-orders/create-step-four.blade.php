@@ -31,15 +31,15 @@
                         </button>
                     </div>
                     <div class="line"></div>
-                    <div class="step active" data-target="#step-three">
-                        <button type="button" class="step-trigger" role="tab" aria-controls="step-three" id="step-three-trigger" aria-selected="true">
+                    <div class="step" data-target="#step-three">
+                        <button type="button" class="step-trigger" role="tab" aria-controls="step-three" id="step-three-trigger" aria-selected="true" disabled>
                             <span class="bs-stepper-circle">3</span>
                             <span class="bs-stepper-label">Paso 3</span>
                         </button>
                     </div>
                     <div class="line"></div>
-                    <div class="step" data-target="#step-four">
-                        <button type="button" class="step-trigger" role="tab" aria-controls="step-four" id="step-four-trigger" aria-selected="false" disabled>
+                    <div class="step active" data-target="#step-four">
+                        <button type="button" class="step-trigger" role="tab" aria-controls="step-four" id="step-four-trigger" aria-selected="true">
                             <span class="bs-stepper-circle">4</span>
                             <span class="bs-stepper-label">Paso 4</span>
                         </button>
@@ -56,6 +56,11 @@
                     <form action="{{ route('work-orders.store-step-four') }}" method="POST">
                         @csrf
                         <div id="step-4" class="content active dstepper-block" role="tabpanel" aria-labelledby="step-4-trigger">
+                            @if (session('error'))
+                                <div class="alert alert-danger">
+                                    {{ session('error') }}
+                                </div>
+                            @endif
                             <div class="row">
                                 <div class="col-md-12">
                                     <h4>Servicios</h4>
@@ -129,6 +134,16 @@
 
 @section('js')
     <script src="https://cdn.jsdelivr.net/npm/bs-stepper@1.7.0/dist/js/bs-stepper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    <script>
+        @if (session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: '{{ session('error') }}',
+            });
+        @endif
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             window.stepper = new Stepper(document.querySelector('.bs-stepper'))

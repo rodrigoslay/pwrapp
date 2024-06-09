@@ -109,6 +109,42 @@
 
                     <div class="row">
                         <div class="col-12">
+                            <h4>Revisiones con Fallos</h4>
+                            @if($revisionsWithFaults->isEmpty())
+                                <p>No hay fallos reportados.</p>
+                            @else
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Revisión</th>
+                                            <th>Fallo</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($revisionsWithFaults as $revision)
+                                            @foreach ($revision->faults as $fault)
+                                                <tr>
+                                                    <td>{{ $revision->name }}</td>
+                                                    <td>{{ $fault->name }}</td>
+                                                    <td>
+                                                        @if($fault->pivot->status == 1)
+                                                            <span class="badge badge-success">Bueno</span>
+                                                        @else
+                                                            <span class="badge badge-danger">Malo</span>
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
                             <h4>Resumen de Costos</h4>
                             @php
                                 use App\Helpers\CurrencyHelper;
@@ -146,7 +182,7 @@
                             <button onclick="window.print();" class="btn btn-primary">
                                 <i class="fas fa-print"></i> Imprimir
                             </button>
-                            <a href="{{ route('executive-work-orders') }}" class="btn btn-secondary">
+                            <a href="{{ route('executive-work-orders.index') }}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Volver a la Lista
                             </a>
                         </div>

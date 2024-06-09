@@ -52,5 +52,16 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(WorkOrder::class, 'service_work_order', 'mechanic_id', 'work_order_id');
     }
+    // Relación para las órdenes de trabajo creadas por el usuario
+    public function createdWorkOrders()
+    {
+        return $this->hasMany(WorkOrder::class, 'created_by');
+    }
+
+    // Relación para las órdenes de trabajo facturadas por el usuario
+    public function facturadasWorkOrders()
+    {
+        return $this->hasMany(WorkOrder::class, 'created_by')->where('status', 'Facturado');
+    }
 
 }

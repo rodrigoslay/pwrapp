@@ -24,4 +24,11 @@ class Product extends Model
         'updated_by',
         'status',
     ];
+
+    public function workOrders()
+    {
+        return $this->belongsToMany(WorkOrder::class, 'product_work_order')
+                    ->withPivot('quantity', 'status')
+                    ->withTimestamps();
+    }
 }

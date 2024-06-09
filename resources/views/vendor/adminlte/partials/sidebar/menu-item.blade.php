@@ -1,7 +1,5 @@
 @inject('sidebarItemHelper', 'JeroenNoten\LaravelAdminLte\Helpers\SidebarItemHelper')
 
-
-
 @if ($sidebarItemHelper->isHeader($item))
 
     {{-- Header --}}
@@ -25,6 +23,7 @@
 @elseif ($sidebarItemHelper->isLink($item))
 
     {{-- Link --}}
-    @include('adminlte::partials.sidebar.menu-item-link')
+    @include('adminlte::partials.sidebar.menu-item-link', ['item' => $item])
 
 @endif
+

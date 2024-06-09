@@ -116,7 +116,7 @@
                                     @foreach ($workOrder->products as $product)
                                         <tr>
                                             <td>{{ $product->name }}</td>
-                                            <td>{{ $product->pivot->quantity }}</td>
+                                            <td>{{ $product->pivot->quantity }}</td> <!-- Mostrar la cantidad correcta -->
                                             <td>
                                                 @if ($product->pivot->status == 'entregado')
                                                     <span class="badge badge-success">Entregado</span>
@@ -130,11 +130,22 @@
                             </table>
                         </div>
                     </div>
-
-                    <!-- Revisiones -->
                     <div class="row">
                         <div class="col-12">
                             <h4>Revisiones</h4>
+                            @if ($hasFaults)
+                                <p class="text-danger">Se encontraron fallos en las revisiones. Informar al cliente.</p>
+                            @endif
+                            @if ($workOrder->status !== 'Facturado')
+                                <button type="button" class="btn btn-primary float-right mb-2" data-toggle="modal" data-target="#addRevisionModal">
+                                    Agregar Revisión
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                    <!-- Revisiones -->
+                    <div class="row">
+                        <div class="col-12">
                             <div id="accordion">
                                 @foreach ($revisionsWithFaults as $revision)
                                     <div class="card">
@@ -169,10 +180,17 @@
                         </div>
                     </div>
 
+                    <div class="row">
+                        <h4>Incidencias</h4>
+                        <div class="col-12">
+                            @if ($hasPendingIncidents)
+                                <p class="text-danger">Tienes incidencias que actualizar, comunicarle al cliente.</p>
+                            @endif
+                        </div>
+                    </div>
 
                     <div class="row">
                         <div class="col-12 table-responsive">
-                            <h4>Incidencias</h4>
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
@@ -445,7 +463,7 @@
                             text: response.message,
                         }).then((result) => {
                             if (result.isConfirmed) {
-                                location.reload();
+                                updateWorkOrderStatus();
                             }
                         });
                     } else {
@@ -473,7 +491,7 @@
                 allowClear: true
             });
 
-            $('select.incident-status').on('change', function () {
+            $('select.incident-status').on('change', function() {
                 const incidentId = $(this).data('incident-id');
                 const status = $(this).val();
                 $.ajax({
@@ -483,18 +501,18 @@
                         _token: '{{ csrf_token() }}',
                         status: status
                     },
-                    success: function (response) {
+                    success: function(response) {
                         Swal.fire({
                             icon: 'success',
                             title: 'Éxito',
                             text: response.message,
                         }).then((result) => {
                             if (result.isConfirmed) {
-                                location.reload();
+                                updateWorkOrderStatus();
                             }
                         });
                     },
-                    error: function (xhr) {
+                    error: function(xhr) {
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
@@ -504,5 +522,21 @@
                 });
             });
         });
+        function updateWorkOrderStatus() {
+            $.ajax({
+                url: '{{ route("work-orders.update-status", $workOrder->id) }}',
+                type: 'PUT',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                },
+                success: function(response) {
+                    console.log('Estado de la OT actualizado');
+                    location.reload(); // Recargar la página después de actualizar el estado de la OT
+                },
+                error: function(response) {
+                    console.error('Error al actualizar el estado de la OT');
+                }
+            });
+        }
     </script>
 @stop
