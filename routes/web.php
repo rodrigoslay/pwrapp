@@ -27,6 +27,10 @@ Route::get('/', function () {
     return view('welcome');
 })->name('welcome');
 
+// Rutas públicas para el estado de las órdenes de trabajo
+Route::get('/work-order-status', [WorkOrderController::class, 'publicWorkOrderStatus'])->name('public.work-order-status');
+Route::get('/api/work-orders', [WorkOrderController::class, 'getWorkOrders'])->name('api.work-orders');
+
 // Rutas de autenticación
 Auth::routes();
 
@@ -59,7 +63,7 @@ Route::middleware(['auth', 'role:Administrador|Ejecutivo|Líder|Mecánico'])->gr
 });
 
 // Rutas de gestión de órdenes de trabajo
-Route::middleware(['auth', 'role:Administrador|Ejecutivo|Líder'])->group(function () {
+Route::middleware(['auth', 'role:Administrador|Ejecutivo|Líder|Mecánico'])->group(function () {
     Route::resource('work-orders', WorkOrderController::class)->except(['show']);
     Route::get('work-orders/list', [WorkOrderController::class, 'list'])->name('work-orders.list');
     Route::get('work-orders/create-step-one', [WorkOrderController::class, 'createStepOne'])->name('work-orders.create-step-one');
@@ -106,6 +110,7 @@ Route::middleware(['auth', 'role:Mecánico'])->group(function () {
     Route::post('mechanic-work-orders/{workOrder}/add-incident', [WorkOrderController::class, 'addIncident'])->name('mechanic-work-orders.add-incident');
     Route::put('mechanic-work-orders/{workOrder}/update-fault-status/{revisionId}/{faultId}', [WorkOrderController::class, 'updateFaultStatus'])->name('mechanic-work-orders.update-fault-status');
 });
+
 
 // Rutas para gestionar bodegas
 Route::prefix('warehouse-work-orders')->name('warehouse-work-orders.')->middleware(['auth', 'role:Bodeguero'])->group(function () {

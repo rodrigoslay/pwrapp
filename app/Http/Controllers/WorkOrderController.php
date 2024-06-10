@@ -17,6 +17,7 @@ use App\Models\CarModel;
 use App\Models\Brand;
 use App\Models\BrandWorkOrder;
 use App\Models\ClientGroup;
+use App\Events\WorkOrderStatusUpdated;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,7 @@ use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Carbon;
 use Yajra\DataTables\Facades\DataTables;
 use Barryvdh\DomPDF\Facade\Pdf;
+
 
 
 if (!function_exists('array_flatten')) {
@@ -331,8 +333,10 @@ public function storeStepFive(Request $request)
             }
         }
 
-        DB::commit();
 
+        DB::commit();
+        // Emitir el evento para actualizar el estado en tiempo real
+       event(new WorkOrderStatusUpdated($workOrder));
         return redirect()->route('executive-work-orders.show', $workOrder->id)->with('success', 'Orden de trabajo creada exitosamente');
     } catch (\Exception $e) {
         DB::rollback();
@@ -478,6 +482,12 @@ private function getRevisionsWithFaults($workOrderId)
         $incident->pivot->approved_by = auth()->user()->id;
         $incident->pivot->save();
 
+        // Actualizar estado de la OT
+    $this->updateWorkOrderStatus($workOrder);
+
+    // Emitir el evento para actualizar el estado en tiempo real
+    event(new WorkOrderStatusUpdated($workOrder));
+
         return response()->json(['message' => 'Estado de la incidencia actualizado correctamente']);
     }
 
@@ -496,6 +506,11 @@ private function getRevisionsWithFaults($workOrderId)
 
     // Enviar correo electrónico al cliente
     \Mail::to($workOrder->client->email)->send(new \App\Mail\WorkOrderInvoiceMail($workOrder));
+    // Actualizar estado de la OT
+    $this->updateWorkOrderStatus($workOrder);
+
+    // Emitir el evento para actualizar el estado en tiempo real
+    event(new WorkOrderStatusUpdated($workOrder));
 
     return response()->json(['status' => 'success', 'message' => 'Orden de trabajo facturada correctamente.']);
 }
@@ -509,8 +524,11 @@ private function getRevisionsWithFaults($workOrderId)
         ]);
 
         $workOrder->services()->attach($request->service_id, ['mechanic_id' => $request->mechanic_id, 'status' => 'pendiente']);
-            // Actualizar estado de la OT
+        // Actualizar estado de la OT
     $this->updateWorkOrderStatus($workOrder);
+
+    // Emitir el evento para actualizar el estado en tiempo real
+    event(new WorkOrderStatusUpdated($workOrder));
 
         Alert::success('Éxito', 'Servicio agregado con éxito');
         return redirect()->route('executive-work-orders.show', $workOrder->id);
@@ -524,8 +542,11 @@ private function getRevisionsWithFaults($workOrderId)
         ]);
 
         $workOrder->products()->attach($request->product_id, ['quantity' => $request->quantity, 'status' => 'pendiente']);
-            // Actualizar estado de la OT
+        // Actualizar estado de la OT
     $this->updateWorkOrderStatus($workOrder);
+
+    // Emitir el evento para actualizar el estado en tiempo real
+    event(new WorkOrderStatusUpdated($workOrder));
 
         Alert::success('Éxito', 'Producto agregado con éxito');
         return redirect()->route('executive-work-orders.show', $workOrder->id);
@@ -555,11 +576,14 @@ public function addRevision(Request $request, $workOrderId)
 
         if (!$existingEntry) {
             $workOrder->revisions()->attach($revisionId, ['fault_id' => $fault->id, 'status' => 1]);
-                // Actualizar estado de la OT
-    $this->updateWorkOrderStatus($workOrder);
+
         }
     }
+    // Actualizar estado de la OT
+    $this->updateWorkOrderStatus($workOrder);
 
+    // Emitir el evento para actualizar el estado en tiempo real
+    event(new WorkOrderStatusUpdated($workOrder));
     Alert::success('Éxito', 'Revisión agregada con éxito');
     return redirect()->route('executive-work-orders.show', $workOrder->id);
 }
@@ -631,7 +655,11 @@ public function addRevision(Request $request, $workOrderId)
         ->update(['status' => $request->status]);
 
     $workOrder = WorkOrder::findOrFail($workOrderId);
+    // Actualizar estado de la OT
     $this->updateWorkOrderStatus($workOrder);
+
+    // Emitir el evento para actualizar el estado en tiempo real
+    event(new WorkOrderStatusUpdated($workOrder));
 
     return response()->json(['success' => true, 'message' => 'Estado del servicio actualizado con éxito.']);
 }
@@ -650,8 +678,11 @@ public function addRevision(Request $request, $workOrderId)
             'approved' => 0,
         ]);
 
-            // Actualizar estado de la OT
+           // Actualizar estado de la OT
     $this->updateWorkOrderStatus($workOrder);
+
+    // Emitir el evento para actualizar el estado en tiempo real
+    event(new WorkOrderStatusUpdated($workOrder));
 
         return back()->with('success', 'Incidencia agregada correctamente.');
     }
@@ -776,10 +807,15 @@ public function addRevision(Request $request, $workOrderId)
     $service->pivot->status = $request->status;
     $service->pivot->save();
 
+    // Actualizar estado de la OT
     $this->updateWorkOrderStatus($workOrder);
+
+    // Emitir el evento para actualizar el estado en tiempo real
+    event(new WorkOrderStatusUpdated($workOrder));
 
     return response()->json(['message' => 'Estado del servicio actualizado correctamente']);
 }
+
 
     public function warehouseWorkOrders()
     {
@@ -892,8 +928,11 @@ public function addRevision(Request $request, $workOrderId)
         ]);
 
         $workOrder->products()->updateExistingPivot($product->id, ['status' => $request->status]);
-            // Actualizar estado de la OT
+         // Actualizar estado de la OT
     $this->updateWorkOrderStatus($workOrder);
+
+    // Emitir el evento para actualizar el estado en tiempo real
+    event(new WorkOrderStatusUpdated($workOrder));
 
         return response()->json(['success' => true]);
     }
@@ -914,7 +953,11 @@ public function addRevision(Request $request, $workOrderId)
             ->update(['status' => $request->input('status')]);
 
         $workOrder = WorkOrder::findOrFail($workOrderId);
-        $this->updateWorkOrderStatus($workOrder);
+        // Actualizar estado de la OT
+    $this->updateWorkOrderStatus($workOrder);
+
+    // Emitir el evento para actualizar el estado en tiempo real
+    event(new WorkOrderStatusUpdated($workOrder));
 
         return response()->json(['success' => true, 'message' => 'Estado de la revisión actualizado correctamente.']);
     }
@@ -970,15 +1013,70 @@ public function addRevision(Request $request, $workOrderId)
         }
 
         $workOrder->save();
+
+    // Emitir el evento para actualizar el estado en tiempo real
+  //  event(new WorkOrderStatusUpdated($workOrder));
+
     }
 
 public function updateStatus($workOrderId)
 {
     $workOrder = WorkOrder::findOrFail($workOrderId);
+    // Actualizar estado de la OT
     $this->updateWorkOrderStatus($workOrder);
+
+    // Emitir el evento para actualizar el estado en tiempo real
+    event(new WorkOrderStatusUpdated($workOrder));
 
     return response()->json(['message' => 'Estado de la OT actualizado correctamente']);
 }
 
+public function publicWorkOrderStatus()
+{
+    return view('public.work-order-status');
+}
+
+public function getWorkOrders()
+{
+    $workOrders = WorkOrder::where('status', '!=', 'Facturado')
+        ->orderBy('updated_at', 'desc')
+        ->take(5)
+        ->with(['vehicle'])
+        ->get();
+
+    $data = $workOrders->map(function ($workOrder) {
+        return [
+            'license_plate' => $workOrder->vehicle->license_plate,
+            'status' => $workOrder->status,
+            'time_elapsed' => $workOrder->created_at->diffForHumans(),
+            'message' => $this->getStatusMessage($workOrder->status)
+        ];
+    });
+
+    return response()->json($data);
+}
+
+
+private function getStatusMessage($status)
+{
+    switch ($status) {
+        case 'Iniciado':
+            return 'Se ha informado a los mecánicos que su vehículo está listo para entrar al taller.';
+        case 'En Proceso':
+            return 'Nuestros mecánicos están trabajando en su vehículo.';
+        case 'Incidencias':
+            return 'Acérquese a su ejecutivo, su vehículo tiene incidencias.';
+        case 'Completado':
+            return 'Su vehículo está listo, acérquese a su ejecutivo.';
+        case 'Aprobado':
+            return 'Se indicó al mecánico que las incidencias están aprobadas.';
+        case 'Parcial':
+            return 'Se indicó al mecánico que algunas incidencias fueron aprobadas.';
+        case 'Rechazado':
+            return 'Se indicó al mecánico que las incidencias están rechazadas.';
+        default:
+            return '';
+    }
+}
 
 }

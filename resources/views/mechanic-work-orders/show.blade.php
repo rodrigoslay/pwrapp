@@ -257,40 +257,12 @@
 @stop
 
 @section('js')
-    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <script>
     $(document).ready(function() {
-        $('.revision-status').change(function() {
-            var form = $(this).closest('form');
-            $.ajax({
-                url: form.attr('action'),
-                type: 'POST',
-                data: form.serialize(),
-                success: function(response) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Éxito',
-                        text: response.message,
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            updateWorkOrderStatus(); 
-                        }
-                    });
-                },
-                error: function(response) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: response.responseJSON.message,
-                    });
-                }
-            });
-        });
-
-        $('.service-status').change(function() {
+        $('.revision-status, .service-status').change(function() {
             var form = $(this).closest('form');
             $.ajax({
                 url: form.attr('action'),
