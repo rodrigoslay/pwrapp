@@ -22,6 +22,11 @@
 
                     <div class="row invoice-info">
                         <div class="col-sm-4 invoice-col">
+                            <img src="{{ asset('img/logopowercars_invoice.webp') }}" alt="Logo Powercars" class="img-fluid"
+                                style="max-height: 100px;">
+                            <p><b>Ejecutivo:</b> {{ $workOrder->createdBy->name ?? 'No asignado' }}</p>
+                        </div>
+                        <div class="col-sm-4 invoice-col">
                             Cliente
                             <address>
                                 <strong>{{ $workOrder->client->name }}</strong><br>
@@ -29,13 +34,6 @@
                                 Patente: {{ $workOrder->vehicle->license_plate }}<br>
                             </address>
                         </div>
-
-                        <div class="col-sm-4 invoice-col">
-                            <img src="{{ asset('img/logopowercars.webp') }}" alt="Logo Powercars" class="img-fluid"
-                                style="max-height: 100px;">
-                            <p><b>Ejecutivo:</b> {{ $workOrder->createdBy->name ?? 'No asignado' }}</p>
-                        </div>
-
                         <div class="col-sm-4 invoice-col">
                             <b>OT ID:</b> {{ $workOrder->id }}<br>
                             <b>Fecha de Ingreso:</b> {{ $workOrder->created_at->format('d/m/Y H:i:s') }}<br>
@@ -48,13 +46,26 @@
                                 @else yellow @endif">
                                 {{ $workOrder->status }}
                             </span>
+                            @if ($workOrder->status === 'Agendado' && $workOrder->scheduling)
+                                <br>
+                                <b>Fecha de agendamiento:</b> {{ \Carbon\Carbon::parse($workOrder->scheduling)->format('d/m/Y H:i:s') }}
+                            @endif
                         </div>
                     </div>
 
+                    @if ($workOrder->status === 'Cotización' || $workOrder->status === 'Agendado')
+                        <div class="row">
+                            <div class="col-12">
+                                <button class="btn btn-success" onclick="iniciarOT({{ $workOrder->id }})">Iniciar OT</button>
+                            </div>
+                        </div>
+                    @endif
+
+                    <!-- Servicios -->
                     <div class="row">
                         <div class="col-12 table-responsive">
                             <h4>Servicios</h4>
-                            @if ($workOrder->status !== 'Facturado')
+                            @if (!in_array($workOrder->status, ['Facturado', 'No Realizado','Agendado','Cotización']))
                                 <button type="button" class="btn btn-primary float-right mb-2" data-toggle="modal"
                                     data-target="#addServiceModal">
                                     Agregar Servicio
@@ -64,28 +75,26 @@
                                 <thead>
                                     <tr>
                                         <th>Servicio</th>
-                                        <th>Mecánico Asignado</th>
+                                        <th>Precio</th>
+                                        <th>Técnico Asignado</th>
                                         <th>Estado</th>
+                                        <th> @if (!in_array($workOrder->status, ['Facturado', 'No Realizado','Agendado','Cotización'])) Acciones @endif </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($workOrder->services as $service)
                                         <tr>
                                             <td>{{ $service->name }}</td>
+                                            <td>{{ $service->price }}</td>
+                                            <td>{{ $userNames[$service->pivot->mechanic_id] ?? 'N/A' }}</td>
+                                            <td><span class="badge badge-info">{{ $service->pivot->status }}</span></td>
                                             <td>
-                                                @if ($service->pivot->mechanic_id)
-                                                    {{ App\Models\User::find($service->pivot->mechanic_id)->name ?? 'No asignado' }}
-                                                @else
-                                                    No asignado
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if ($service->pivot->status == 'completado')
-                                                    <span class="badge badge-success">Completado</span>
-                                                @elseif($service->pivot->status == 'iniciado')
-                                                    <span class="badge badge-warning">Iniciado</span>
-                                                @else
-                                                    <span class="badge badge-danger">Pendiente</span>
+                                                @if (!in_array($workOrder->status, ['Facturado', 'No Realizado','Agendado','Cotización']))
+                                                    <form action="{{ route('work-orders.remove-service', [$workOrder->id, $service->id]) }}" method="POST">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
+                                                    </form>
                                                 @endif
                                             </td>
                                         </tr>
@@ -95,10 +104,11 @@
                         </div>
                     </div>
 
+                    <!-- Productos -->
                     <div class="row">
                         <div class="col-12 table-responsive">
                             <h4>Productos</h4>
-                            @if ($workOrder->status !== 'Facturado')
+                            @if (!in_array($workOrder->status, ['Facturado', 'No Realizado','Agendado','Cotización']))
                                 <button type="button" class="btn btn-primary float-right mb-2" data-toggle="modal"
                                     data-target="#addProductModal">
                                     Agregar Producto
@@ -108,20 +118,32 @@
                                 <thead>
                                     <tr>
                                         <th>Producto</th>
+                                        <th>Precio</th>
                                         <th>Cantidad</th>
                                         <th>Estado</th>
+                                        <th> @if (!in_array($workOrder->status, ['Facturado', 'No Realizado','Agendado','Cotización'])) Acciones @endif</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($workOrder->products as $product)
                                         <tr>
                                             <td>{{ $product->name }}</td>
-                                            <td>{{ $product->pivot->quantity }}</td> <!-- Mostrar la cantidad correcta -->
+                                            <td>{{ $product->price }}</td>
+                                            <td>{{ $product->pivot->quantity }}</td>
                                             <td>
                                                 @if ($product->pivot->status == 'entregado')
                                                     <span class="badge badge-success">Entregado</span>
                                                 @else
                                                     <span class="badge badge-danger">Pendiente</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if (!in_array($workOrder->status, ['Facturado', 'No Realizado','Agendado','Cotización']))
+                                                    <form action="{{ route('work-orders.remove-product', [$workOrder->id, $product->id]) }}" method="POST">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
+                                                    </form>
                                                 @endif
                                             </td>
                                         </tr>
@@ -130,47 +152,73 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Revisiones -->
                     <div class="row">
                         <div class="col-12">
-                            <h4>Revisiones</h4>
+                            <h4>Se realizaron las sgtes. Revisiones:</h4>
                             @if ($hasFaults)
                                 <p class="text-danger">Se encontraron fallos en las revisiones. Informar al cliente.</p>
                             @endif
-                            @if ($workOrder->status !== 'Facturado')
-                                <button type="button" class="btn btn-primary float-right mb-2" data-toggle="modal" data-target="#addRevisionModal">
+                            @if (!in_array($workOrder->status, ['Facturado', 'No Realizado','Agendado','Cotización']))
+                                <button type="button" class="btn btn-primary float-right mb-2" data-toggle="modal"
+                                    data-target="#addRevisionModal">
                                     Agregar Revisión
                                 </button>
                             @endif
                         </div>
                     </div>
-                    <!-- Revisiones -->
+
                     <div class="row">
                         <div class="col-12">
                             <div id="accordion">
                                 @foreach ($revisionsWithFaults as $revision)
                                     <div class="card">
                                         <div class="card-header" id="heading{{ $revision->id }}">
-                                            <h5 class="mb-0">
-                                                <button class="btn btn-link" data-toggle="collapse" data-target="#collapse{{ $revision->id }}" aria-expanded="true" aria-controls="collapse{{ $revision->id }}">
+                                            <h5 class="mb-0 d-flex justify-content-between align-items-center">
+                                                <button class="btn btn-link" data-toggle="collapse"
+                                                    data-target="#collapse{{ $revision->id }}" aria-expanded="true"
+                                                    aria-controls="collapse{{ $revision->id }}">
                                                     {{ $revision->name }}
                                                 </button>
+                                                @if (!in_array($workOrder->status, ['Facturado', 'No Realizado','Agendado','Cotización']))
+                                                    <form action="{{ route('work-orders.remove-revision', [$workOrder->id, $revision->id]) }}" method="POST">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-danger btn-sm">Eliminar Revisión</button>
+                                                    </form>
+                                                @endif
                                             </h5>
                                         </div>
-                                        <div id="collapse{{ $revision->id }}" class="collapse" aria-labelledby="heading{{ $revision->id }}" data-parent="#accordion">
+                                        <div id="collapse{{ $revision->id }}" class="collapse"
+                                            aria-labelledby="heading{{ $revision->id }}" data-parent="#accordion">
                                             <div class="card-body">
                                                 <ul class="list-group">
-                                                    @foreach ($revision->faults as $fault)
+                                                    @php
+                                                        $fallasConEstadoCero = $revision->faults->filter(function($fault) {
+                                                            return $fault->status == 0;
+                                                        })->count();
+                                                    @endphp
+
+                                                    @if ($fallasConEstadoCero == 0)
                                                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                            {{ $fault->fallo }}
+                                                            No se encontraron fallas en la revision
                                                             <span>
-                                                                @if ($fault->pivot->status)
-                                                                    <i class="fas fa-check-circle text-success"></i>
-                                                                @else
-                                                                    <i class="fas fa-times-circle text-danger"></i>
-                                                                @endif
+                                                                <i class="fas fa-check-circle text-success"></i>
                                                             </span>
                                                         </li>
-                                                    @endforeach
+                                                    @else
+                                                        @foreach ($revision->faults as $fault)
+                                                            @if ($fault->status == 0)
+                                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                                    {{ $fault->fallo }}
+                                                                    <span>
+                                                                        <i class="fas fa-times-circle text-danger"></i>
+                                                                    </span>
+                                                                </li>
+                                                            @endif
+                                                        @endforeach
+                                                    @endif
                                                 </ul>
                                             </div>
                                         </div>
@@ -180,6 +228,7 @@
                         </div>
                     </div>
 
+                    <!-- Incidencias -->
                     <div class="row">
                         <h4>Incidencias</h4>
                         <div class="col-12">
@@ -208,10 +257,28 @@
                                             <td>{{ $incident->pivot->observation }}</td>
                                             <td>{{ App\Models\User::find($incident->pivot->reported_by)->name ?? 'Desconocido' }}</td>
                                             <td>
-                                                <select data-incident-id="{{ $incident->id }}" class="form-control incident-status">
-                                                    <option value="0" {{ $incident->pivot->approved == 0 ? 'selected' : '' }}>Pendiente</option>
-                                                    <option value="1" {{ $incident->pivot->approved == 1 ? 'selected' : '' }}>Aprobado</option>
-                                                </select>
+                                                @if (in_array($workOrder->status, ['Facturado', 'No Realizado','Agendado','Cotización']))
+                                                    @if ($incident->pivot->approved == 1)
+                                                        <span class="badge badge-success">Aprobado</span>
+                                                    @elseif ($incident->pivot->approved == 0)
+                                                        <span class="badge badge-danger">Pendiente</span>
+                                                    @elseif ($incident->pivot->approved == 3)
+                                                        <span class="badge badge-warning">Rechazado</span>
+                                                    @endif
+                                                @else
+                                                    <select data-incident-id="{{ $incident->id }}"
+                                                        class="form-control incident-status">
+                                                        <option value="0"
+                                                            {{ $incident->pivot->approved == 0 ? 'selected' : '' }}>Pendiente
+                                                        </option>
+                                                        <option value="1"
+                                                            {{ $incident->pivot->approved == 1 ? 'selected' : '' }}>Aprobado
+                                                        </option>
+                                                        <option value="3"
+                                                            {{ $incident->pivot->approved == 3 ? 'selected' : '' }}>Rechazado
+                                                        </option>
+                                                    </select>
+                                                @endif
                                             </td>
                                             <td>{{ $incident->pivot->approved ? App\Models\User::find($incident->pivot->approved_by)->name : 'N/A' }}</td>
                                         </tr>
@@ -231,11 +298,9 @@
                             @php
                                 use App\Helpers\CurrencyHelper;
 
-                                $subtotal =
-                                    $workOrder->services->sum('price') +
-                                    $workOrder->products->sum(function ($product) {
-                                        return $product->pivot->quantity * $product->price;
-                                    });
+                                $subtotal = $workOrder->services->sum('price') + $workOrder->products->sum(function ($product) {
+                                    return $product->pivot->quantity * $product->price;
+                                });
                                 $discount = $subtotal * ($workOrder->client->clientGroup->discount_percentage / 100);
                                 $tax = ($subtotal - $discount) * ($workOrder->tax_percentage / 100);
                                 $total = $subtotal - $discount + $tax;
@@ -249,10 +314,12 @@
                                     <th>Descuento ({{ $workOrder->client->clientGroup->discount_percentage }}%):</th>
                                     <td>{{ CurrencyHelper::format($discount) }}</td>
                                 </tr>
+                                {{--
                                 <tr>
                                     <th>Impuesto ({{ $workOrder->tax_percentage }}%):</th>
                                     <td>{{ CurrencyHelper::format($tax) }}</td>
                                 </tr>
+                                 --}}
                                 <tr>
                                     <th>Total:</th>
                                     <td>{{ CurrencyHelper::format($total) }}</td>
@@ -270,10 +337,14 @@
                                 class="btn btn-success float-right">
                                 <i class="fas fa-print"></i> Versión Imprimible
                             </a>
-                            @if ($workOrder->status !== 'Facturado')
+                            @if ($workOrder->status !== 'Facturado' && $workOrder->status !== 'No Realizado')
                                 <button onclick="facturarOT()" class="btn btn-warning float-right"
                                     style="margin-right: 10px;">
                                     <i class="fas fa-file-invoice-dollar"></i> Facturar
+                                </button>
+                                <button onclick="marcarNoRealizado()" class="btn btn-danger float-right"
+                                    style="margin-right: 10px;">
+                                    <i class="fas fa-times-circle"></i> No Realizado
                                 </button>
                             @endif
                         </div>
@@ -285,7 +356,7 @@
     </div>
 
     <!-- Modal para agregar servicio -->
-    @if ($workOrder->status !== 'Facturado')
+    @if (!in_array($workOrder->status, ['Facturado', 'No Realizado','Agendado','Cotización']))
         <div class="modal fade" id="addServiceModal" tabindex="-1" role="dialog" aria-labelledby="addServiceModalLabel"
             aria-hidden="true">
             <div class="modal-dialog" role="document">
@@ -328,7 +399,7 @@
     @endif
 
     <!-- Modal para agregar producto -->
-    @if ($workOrder->status !== 'Facturado')
+    @if (!in_array($workOrder->status, ['Facturado', 'No Realizado','Agendado','Cotización']))
         <div class="modal fade" id="addProductModal" tabindex="-1" role="dialog"
             aria-labelledby="addProductModalLabel" aria-hidden="true">
             <div class="modal-dialog" role="document">
@@ -367,7 +438,7 @@
     @endif
 
     <!-- Modal para agregar revisión -->
-    @if ($workOrder->status !== 'Facturado')
+    @if (!in_array($workOrder->status, ['Facturado', 'No Realizado','Agendado','Cotización']))
         <div class="modal fade" id="addRevisionModal" tabindex="-1" role="dialog"
             aria-labelledby="addRevisionModalLabel" aria-hidden="true">
             <div class="modal-dialog" role="document">
@@ -422,7 +493,11 @@
     </div>
 
 @stop
+@section('footer')
 
+    Realizado por <a href="https://www.slaymultimedios.com/"><strong>Slay Multimedios</strong></a> - Laravel v{{ Illuminate\Foundation\Application::VERSION }} (PHP v{{ PHP_VERSION }})<br>
+    &copy; 2024 PWRTALLER Versión 1.0. Todos los derechos reservados.
+@stop
 @section('css')
     <link rel="stylesheet" href="/css/admin_custom.css">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/css/select2.min.css" rel="stylesheet" />
@@ -451,6 +526,42 @@
         function facturarOT() {
             $.ajax({
                 url: '{{ route('work-orders.facturar', $workOrder->id) }}',
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Éxito',
+                            text: response.message,
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                updateWorkOrderStatus();
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.message,
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: xhr.responseJSON.message,
+                    });
+                }
+            });
+        }
+
+        function marcarNoRealizado() {
+            $.ajax({
+                url: '{{ route('work-orders.no-realizado', $workOrder->id) }}',
                 method: 'POST',
                 data: {
                     _token: '{{ csrf_token() }}'
@@ -522,9 +633,14 @@
                 });
             });
         });
+
         function updateWorkOrderStatus() {
+            if (['Facturado', 'No Realizado','Agendado','Cotización'].includes('{{ $workOrder->status }}')) {
+                console.log('La OT está bloqueada y no puede ser actualizada.');
+                return;
+            }
             $.ajax({
-                url: '{{ route("work-orders.update-status", $workOrder->id) }}',
+                url: '{{ route('work-orders.update-status', $workOrder->id) }}',
                 type: 'PUT',
                 data: {
                     _token: '{{ csrf_token() }}',
@@ -535,6 +651,54 @@
                 },
                 error: function(response) {
                     console.error('Error al actualizar el estado de la OT');
+                }
+            });
+        }
+
+        function iniciarOT(workOrderId) {
+            Swal.fire({
+                title: '¿Está seguro?',
+                text: "¡Esta acción cambiará el estado de la OT a 'Iniciado'!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, cambiar estado'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: `/work-orders/${workOrderId}/start`,
+                        method: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}'
+                        },
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Éxito',
+                                    text: response.message,
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        location.reload();
+                                    }
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: response.message,
+                                });
+                            }
+                        },
+                        error: function(xhr) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: xhr.responseJSON.message,
+                            });
+                        }
+                    });
                 }
             });
         }

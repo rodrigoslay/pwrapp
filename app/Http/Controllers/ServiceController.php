@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ServiceController extends Controller
 {
@@ -43,13 +44,21 @@ class ServiceController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'price' => 'required|numeric',
+            'price_half' => 'required|numeric',
+            'price_high' => 'required|numeric',
             'discount_applicable' => 'required|boolean',
             'status' => 'required|boolean',
         ]);
 
-        Service::create($request->all() + ['created_by' => Auth::id()]);
+        try {
+            Service::create($request->all() + ['created_by' => Auth::id()]);
 
-        return response()->json(['success' => true]);
+            return response()->json(['success' => true, 'message' => 'Servicio creado con éxito']);
+        } catch (\Exception $e) {
+            Log::error('Error al crear el servicio: ' . $e->getMessage());
+
+            return response()->json(['success' => false, 'message' => 'Error al crear el servicio'], 500);
+        }
     }
 
     public function edit(Service $service)
@@ -60,30 +69,46 @@ class ServiceController extends Controller
     public function update(Request $request, Service $service)
     {
         $request->validate([
+            'sku' => 'required|string|max:255',
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'price' => 'required|numeric',
+            'price_half' => 'required|numeric',
+            'price_high' => 'required|numeric',
             'discount_applicable' => 'required|boolean',
             'status' => 'required|boolean',
         ]);
 
-        $service->update([
-            'name' => $request->name,
-            'description' => $request->description,
-            'price' => $request->price,
-            'discount_applicable' => $request->discount_applicable,
-            'status' => $request->status,
-            'updated_by' => auth()->user()->id,
-        ]);
+        try {
+            $service->update([
+                'sku' => $request->sku,
+                'name' => $request->name,
+                'description' => $request->description,
+                'price' => $request->price,
+                'discount_applicable' => $request->discount_applicable,
+                'status' => $request->status,
+                'updated_by' => auth()->user()->id,
+            ]);
 
-        Alert::success('Éxito', 'Servicio actualizado con éxito');
-        return redirect()->route('services.index');
+            Alert::success('Éxito', 'Servicio actualizado con éxito');
+            return redirect()->route('services.index');
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar el servicio: ' . $e->getMessage());
+
+            return response()->json(['success' => false, 'message' => 'Error al actualizar el servicio'], 500);
+        }
     }
 
     public function destroy(Service $service)
     {
-        $service->delete();
-        Alert::success('Éxito', 'Servicio eliminado con éxito');
-        return redirect()->route('services.index');
+        try {
+            $service->delete();
+            Alert::success('Éxito', 'Servicio eliminado con éxito');
+            return redirect()->route('services.index');
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar el servicio: ' . $e->getMessage());
+            Alert::error('Error', 'No se pudo eliminar el servicio');
+            return redirect()->route('services.index');
+        }
     }
 }

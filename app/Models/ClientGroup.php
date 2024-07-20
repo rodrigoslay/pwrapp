@@ -19,4 +19,12 @@ class ClientGroup extends Model
         'discount_percentage',
         'status',
     ];
+
+    /**
+     * Get the clients for the client group.
+     */
+    public function clients()
+    {
+        return $this->hasMany(Client::class);
+    }
 }

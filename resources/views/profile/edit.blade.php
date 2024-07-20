@@ -1,76 +1,148 @@
 @extends('adminlte::page')
 
-@section('title', 'Editar Perfil | Dashboard')
+@section('title', 'Perfil de Usuario')
 
 @section('content_header')
-    <h1>Editar Perfil</h1>
+    <h1>Perfil de Usuario</h1>
 @stop
 
 @section('content')
-    <div class="container-fluid">
-        @if(session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
+@if ($errors->any())
+    <div class="alert alert-danger">
+        <ul>
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+    <div class="container">
         <div class="row">
-            <div class="col-12 col-md-6">
-                <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data">
-                    @csrf
-                    @method('PUT')
-                    <div class="card">
-                        <div class="card-header">
-                            <h5>Información del Perfil</h5>
+            <!-- Profile Image -->
+            <div class="col-md-4">
+                <div class="card card-primary card-outline">
+                    <div class="card-body box-profile">
+                        <div class="text-center">
+                            <img class="profile-user-img img-fluid img-circle"
+                                 src="{{ auth()->user()->adminlte_image() }}"
+                                 alt="User profile picture">
                         </div>
-                        <div class="card-body">
-                            <div class="form-group">
-                                <label for="name" class="form-label">Nombre <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="name" value="{{ old('name', $user->name) }}" required>
-                                @if($errors->has('name'))
-                                    <span class="text-danger">{{ $errors->first('name') }}</span>
-                                @endif
-                            </div>
-                            <div class="form-group">
-                                <label for="email" class="form-label">Correo Electrónico <span class="text-danger">*</span></label>
-                                <input type="email" class="form-control" name="email" value="{{ old('email', $user->email) }}" required>
-                                @if($errors->has('email'))
-                                    <span class="text-danger">{{ $errors->first('email') }}</span>
-                                @endif
-                            </div>
-                            <div class="form-group">
-                                <label for="password" class="form-label">Contraseña</label>
-                                <input type="password" class="form-control" name="password" placeholder="Dejar en blanco para mantener la actual">
-                                @if($errors->has('password'))
-                                    <span class="text-danger">{{ $errors->first('password') }}</span>
-                                @endif
-                            </div>
-                            <div class="form-group">
-                                <label for="password_confirmation" class="form-label">Confirmar Contraseña</label>
-                                <input type="password" class="form-control" name="password_confirmation" placeholder="Dejar en blanco para mantener la actual">
-                            </div>
-                            <div class="form-group">
-                                <label for="avatar" class="form-label">Avatar</label>
-                                <input type="file" class="form-control" name="avatar">
-                                @if($errors->has('avatar'))
-                                    <span class="text-danger">{{ $errors->first('avatar') }}</span>
-                                @endif
-                                @if($user->avatar)
-                                    <div class="mt-2">
-                                        <img src="{{ Storage::url($user->avatar) }}" alt="Avatar" class="img-thumbnail" width="100">
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="card-footer">
-                            <button type="submit" class="btn btn-primary">Guardar</button>
-                        </div>
+
+                        <h3 class="profile-username text-center">{{ $user->name }}</h3>
+
+                        <p class="text-muted text-center">{{collect($user->getRoleNames())->implode(', ') }}</p>
+
+                        <ul class="list-group list-group-unbordered mb-3">
+                            <li class="list-group-item">
+                                <b>Correo Electrónico</b> <a class="float-right">{{ $user->email }}</a>
+                            </li>
+                            <li class="list-group-item">
+                                <b>Miembro desde</b> <a class="float-right">{{ $user->created_at->format('d/m/Y') }}</a>
+                            </li>
+                        </ul>
                     </div>
-                </form>
+                    <!-- /.card-body -->
+                </div>
+                <!-- /.card -->
+            </div>
+
+            <!-- Edit Profile Form -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header p-2">
+                        <ul class="nav nav-pills">
+                            <!-- /.li class="nav-item"><a class="nav-link active" href="#settings" data-toggle="tab">Configuración</a></ -->
+                            Modifica aqui tu Nombre, Contraseña y Foto de Perfil.
+                        </ul>
+                    </div><!-- /.card-header -->
+                    <div class="card-body">
+                        @if(session('success'))
+                            <div class="alert alert-success">
+                                {{ session('success') }}
+                            </div>
+                        @endif
+                        @if(session('error'))
+                            <div class="alert alert-danger">
+                                {{ session('error') }}
+                            </div>
+                        @endif
+                        <div class="tab-content">
+                            <div class="active tab-pane" id="settings">
+                                <form class="form-horizontal" action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data">
+                                    @csrf
+                                    @method('PUT')
+                                    <div class="form-group row">
+                                        <label for="name" class="col-sm-2 col-form-label">Nombre</label>
+                                        <div class="col-sm-10">
+                                            <input type="text" class="form-control" id="name" name="name" value="{{ $user->name }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="email" class="col-sm-2 col-form-label">Correo Electrónico</label>
+                                        <div class="col-sm-10">
+                                            <input type="id_email" class="form-control" id="id_email" name="id_email" value="{{ $user->email }}" disabled>
+                                            <input type="hidden" name="email" value="{{ $user->email }}">
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="password" class="col-sm-2 col-form-label">Contraseña</label>
+                                        <div class="col-sm-10">
+                                            <input type="password" class="form-control" id="password" name="password">
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="password_confirmation" class="col-sm-2 col-form-label">Confirmar Contraseña</label>
+                                        <div class="col-sm-10">
+                                            <input type="password" class="form-control" id="password_confirmation" name="password_confirmation">
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label for="avatar" class="col-sm-2 col-form-label">Avatar</label>
+                                        <div class="col-sm-10">
+                                            <input type="file" class="form-control-file" id="avatar" name="avatar">
+                                        </div>
+                                    </div>
+                                    <div class="form-group row d-none">
+                                        <div class="offset-sm-2 col-sm-10">
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input" id="dark_mode" name="dark_mode" {{ $user->dark_mode ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="dark_mode">Modo Oscuro</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="offset-sm-2 col-sm-10">
+                                            <button type="submit" class="btn btn-primary">Actualizar Perfil</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <!-- /.tab-pane -->
+                        </div>
+                        <!-- /.tab-content -->
+                    </div><!-- /.card-body -->
+                </div>
+                <!-- /.card -->
             </div>
         </div>
     </div>
 @stop
 
+@section('footer')
+    Realizado por <a href="https://www.slaymultimedios.com/"><strong>Slay Multimedios</strong></a> - Laravel v{{ Illuminate\Foundation\Application::VERSION }} (PHP v{{ PHP_VERSION }})<br>
+    &copy; 2024 PWRTALLER Versión 1.0. Todos los derechos reservados.
+@stop
 @section('css')
     <link rel="stylesheet" href="/css/admin_custom.css">
+@stop
+@section('js')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+<script>
+    $(document).ready(function() {
+        $('#dark_mode').change(function() {
+            $(this).closest('form').submit();
+        });
+    });
+</script>
 @stop

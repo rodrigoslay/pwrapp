@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\{
     DashboardController,
     PermissionsController,
@@ -17,10 +18,13 @@ use App\Http\Controllers\{
     WorkOrderController,
     SettingController,
     ReportController,
-    WarehouseRequestController,
     ProfileController,
-    RevisionController
+    DarkModeController,
+    RevisionController,
+    ManagerWorkOrdersController,
+    ChatController
 };
+
 
 // Página de bienvenida
 Route::get('/', function () {
@@ -30,6 +34,7 @@ Route::get('/', function () {
 // Rutas públicas para el estado de las órdenes de trabajo
 Route::get('/work-order-status', [WorkOrderController::class, 'publicWorkOrderStatus'])->name('public.work-order-status');
 Route::get('/api/work-orders', [WorkOrderController::class, 'getWorkOrders'])->name('api.work-orders');
+
 
 // Rutas de autenticación
 Auth::routes();
@@ -45,7 +50,7 @@ Route::middleware(['auth', 'role:Administrador|Ejecutivo|Líder'])->group(functi
 
 // Rutas de gestión de vehículos y marcas
 Route::middleware(['auth', 'role:Administrador|Ejecutivo|Líder'])->group(function () {
-    Route::resource('vehicles', VehicleController::class);
+    Route::resource('vehicles', VehicleController::class)->except(['update']);
     Route::resource('brands', BrandController::class)->except(['store']);
     Route::resource('car-models', CarModelController::class);
     Route::get('brands/{brand}/models', [CarModelController::class, 'getModelsByBrand'])->name('brands.models');
@@ -61,6 +66,23 @@ Route::middleware(['auth', 'role:Administrador|Ejecutivo|Líder|Bodeguero'])->gr
 Route::middleware(['auth', 'role:Administrador|Ejecutivo|Líder|Mecánico'])->group(function () {
     Route::resource('incidents', IncidentController::class);
 });
+//chat
+Route::middleware(['auth'])->group(function () {
+    Route::get('chat', [ChatController::class, 'index'])->name('chat.index');
+    Route::post('chat', [ChatController::class, 'store'])->name('chat.store');
+});
+
+// rutas manageer
+
+Route::middleware(['auth', 'role:Manager'])->prefix('manager-work-orders')->name('manager-work-orders.')->group(function () {
+    Route::get('/', [ManagerWorkOrdersController::class, 'index'])->name('index');
+    Route::get('/list', [ManagerWorkOrdersController::class, 'list'])->name('list'); // Esta es la ruta que falta
+    Route::get('/stats', [ManagerWorkOrdersController::class, 'stats'])->name('stats');
+    Route::get('/summary', [ManagerWorkOrdersController::class, 'summary'])->name('summary');
+    Route::get('/{id}', [ManagerWorkOrdersController::class, 'show'])->name('show');
+    Route::post('/{id}/close', [ManagerWorkOrdersController::class, 'closeWorkOrder'])->name('close');
+});
+
 
 // Rutas de gestión de órdenes de trabajo
 Route::middleware(['auth', 'role:Administrador|Ejecutivo|Líder|Mecánico'])->group(function () {
@@ -81,6 +103,20 @@ Route::middleware(['auth', 'role:Administrador|Ejecutivo|Líder|Mecánico'])->gr
     Route::post('work-orders/store-step-five', [WorkOrderController::class, 'storeStepFive'])->name('work-orders.store-step-five');
     Route::put('work-orders/{workOrder}/update-status', [WorkOrderController::class, 'updateStatus'])->name('work-orders.update-status');
 });
+
+// Lideres
+
+Route::middleware(['auth', 'role:Líder'])->group(function () {
+    Route::get('leader-work-orders', [WorkOrderController::class, 'leaderWorkOrders'])->name('leader-work-orders.index');
+    Route::get('leader-work-orders/list', [WorkOrderController::class, 'leaderWorkOrdersList'])->name('leader-work-orders.list');
+    Route::get('leader-work-orders/{workOrder}', [WorkOrderController::class, 'leaderShowWorkOrder'])->name('leader-work-orders.show');
+    Route::post('leader-work-orders/{workOrder}/assign-mechanic', [WorkOrderController::class, 'assignMechanic'])->name('leader-work-orders.assign-mechanic');
+    Route::put('leader-work-orders/{workOrder}/change-mechanic/{service}', [WorkOrderController::class, 'changeMechanic'])->name('leader-work-orders.change-mechanic');
+    Route::put('leader-work-orders/{workOrder}/update-status/{service}', [WorkOrderController::class, 'updateServiceStatusByLeader'])->name('leader-work-orders.update-status');
+    Route::put('leader-work-orders/{workOrder}/update-fault-status/{revision}/{fault}', [WorkOrderController::class, 'updateFaultStatusByLeader'])->name('leader-work-orders.update-fault-status');
+    Route::post('leader-work-orders/{workOrder}/add-incident', [WorkOrderController::class, 'addIncidentByLeader'])->name('leader-work-orders.add-incident');
+});
+
 
 // Rutas para obtener datos específicos
 Route::middleware(['auth', 'role:Administrador|Ejecutivo|Líder'])->group(function () {
@@ -109,8 +145,8 @@ Route::middleware(['auth', 'role:Mecánico'])->group(function () {
     Route::put('mechanic-work-orders/{workOrder}/update-status/{serviceId}', [WorkOrderController::class, 'updateMechanicWorkOrderStatus'])->name('mechanic-work-orders.update-status');
     Route::post('mechanic-work-orders/{workOrder}/add-incident', [WorkOrderController::class, 'addIncident'])->name('mechanic-work-orders.add-incident');
     Route::put('mechanic-work-orders/{workOrder}/update-fault-status/{revisionId}/{faultId}', [WorkOrderController::class, 'updateFaultStatus'])->name('mechanic-work-orders.update-fault-status');
+    Route::put('vehicles/{vehicle}', [VehicleController::class, 'update'])->name('vehicles.update');
 });
-
 
 // Rutas para gestionar bodegas
 Route::prefix('warehouse-work-orders')->name('warehouse-work-orders.')->middleware(['auth', 'role:Bodeguero'])->group(function () {
@@ -120,13 +156,23 @@ Route::prefix('warehouse-work-orders')->name('warehouse-work-orders.')->middlewa
     Route::put('/update-product-status/{workOrder}/{product}', [WorkOrderController::class, 'updateProductStatus'])->name('update-product-status');
 });
 
-// Rutas para gestionar ejecutivos
-Route::middleware(['auth', 'role:Ejecutivo|Líder'])->group(function () {
+// Rutas para gestionar ejecutivos Lider Manager
+Route::middleware(['auth', 'role:Ejecutivo|Líder|Manager'])->group(function () {
     Route::get('executive-work-orders', [WorkOrderController::class, 'executiveWorkOrders'])->name('executive-work-orders.index');
     Route::get('executive-work-orders/list', [WorkOrderController::class, 'executiveWorkOrdersList'])->name('executive-work-orders.list');
     Route::get('executive-work-orders/{workOrder}', [WorkOrderController::class, 'executiveShowWorkOrder'])->name('executive-work-orders.show');
     Route::post('work-orders/{workOrder}/update-incident-status/{incident}', [WorkOrderController::class, 'updateIncidentStatus'])->name('work-orders.update-incident-status');
     Route::post('work-orders/{workOrder}/facturar', [WorkOrderController::class, 'facturar'])->name('work-orders.facturar');
+    Route::post('work-orders/{workOrder}/no-realizado', [WorkOrderController::class, 'noRealizado'])->name('work-orders.no-realizado');
+    Route::post('/work-orders/{workOrderId}/start', [WorkOrderController::class, 'start'])->name('work-orders.start');
+    Route::get('/work-orders/quotations', [WorkOrderController::class, 'executiveQuotations'])->name('work-orders.quotations');
+    Route::get('/work-orders/quotations/list', [WorkOrderController::class, 'executiveQuotationsList'])->name('work-orders.quotations-list');
+    Route::get('/work-orders/scheduled', [WorkOrderController::class, 'executiveScheduled'])->name('work-orders.scheduled');
+    Route::post('work-orders/{workOrderId}/update-incident-status/{incidentId}', 'WorkOrderController@updateIncidentStatus');
+    Route::delete('work-orders/{workOrderId}/remove-revision/{revisionId}', 'WorkOrderController@removeRevision')->name('work-orders.remove-revision');
+    Route::delete('work-orders/{workOrder}/remove-service/{service}', [WorkOrderController::class, 'removeService'])->name('work-orders.remove-service');
+    Route::delete('work-orders/{workOrder}/remove-product/{product}', [WorkOrderController::class, 'removeProduct'])->name('work-orders.remove-product');
+    Route::delete('work-orders/{workOrder}/remove-fault/{revision}/{fault}', [WorkOrderController::class, 'removeFault'])->name('work-orders.remove-fault');
 });
 
 // Rutas para agregar servicios, productos y revisiones a las órdenes de trabajo
@@ -134,14 +180,14 @@ Route::middleware(['auth', 'role:Administrador|Ejecutivo|Líder'])->group(functi
     Route::post('work-orders/{workOrder}/add-service', [WorkOrderController::class, 'addService'])->name('work-orders.add-service');
     Route::post('work-orders/{workOrder}/add-product', [WorkOrderController::class, 'addProduct'])->name('work-orders.add-product');
     Route::post('work-orders/{workOrder}/add-revision', [WorkOrderController::class, 'addRevision'])->name('work-orders.add-revision');
-    Route::get('executive-work-orders/{workOrder}/print', [WorkOrderController::class, 'printWorkOrder'])->name('executive-work-orders.print');
+    Route::get('executive-work-orders/{id}/print', [WorkOrderController::class, 'showPrintView'])->name('executive-work-orders.print');
+    Route::get('executive-work-orders/{id}/download-pdf', [WorkOrderController::class, 'downloadWorkOrderPDF'])->name('executive-work-orders.download-pdf');
 });
 
 // Rutas de configuración, reportes y solicitudes de bodega
 Route::middleware(['auth', 'role:Administrador'])->group(function () {
     Route::resource('settings', SettingController::class);
     Route::resource('reports', ReportController::class);
-    Route::resource('warehouse-requests', WarehouseRequestController::class);
 });
 
 // Rutas para revisiones
@@ -154,6 +200,11 @@ Route::middleware(['auth', 'role:Administrador|Ejecutivo|Líder'])->group(functi
 Route::middleware(['auth'])->group(function () {
     Route::get('profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
+
+});
+Route::group(['middleware' => ['auth', 'apply-dark-mode']], function () {
+    // tus rutas protegidas aquí
+    Route::post('/toggle-dark-mode', [DarkModeController::class, 'toggleDarkMode'])->name('toggle-dark-mode');
 });
 
 // Agrupar rutas para usuarios, roles y permisos

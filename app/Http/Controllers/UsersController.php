@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use DataTables;
+
 use Carbon\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use Spatie\Permission\Models\Role;
+use Yajra\DataTables\Facades\DataTables;
 
 class UsersController extends Controller
 {

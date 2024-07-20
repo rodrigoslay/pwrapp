@@ -14,22 +14,18 @@ class Revision extends Model
         'description',
         'status',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     public function faults()
-{
-    return $this->belongsToMany(RevisionFault::class, 'revision_work_order', 'revision_id', 'fault_id')
-                ->withPivot('work_order_id', 'status')
-                ->distinct();
-}
+    {
+        return $this->hasMany(RevisionFault::class, 'revision_id');
+    }
 
-
-public function workOrders()
-{
-    return $this->belongsToMany(WorkOrder::class, 'revision_work_order', 'revision_id', 'work_order_id')
-                ->withPivot('fault_id', 'status');
-}
-
-
+    public function workOrders()
+    {
+        return $this->belongsToMany(WorkOrder::class, 'revision_work_order', 'revision_id', 'work_order_id')
+                    ->withPivot('fault_id', 'status')
+                    ->withTimestamps();
+    }
 }

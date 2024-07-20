@@ -41,19 +41,16 @@ class WorkOrderStatusUpdated implements ShouldBroadcastNow
     {
         switch ($status) {
             case 'Iniciado':
-                return 'Se ha informado a los mecánicos que su vehículo está listo para entrar al taller.';
-            case 'En Proceso':
-                return 'Nuestros mecánicos están trabajando en su vehículo.';
+                return 'Su vehículo está esperando su turno para entrar al taller.';
             case 'Incidencias':
-                return 'Acérquese a su ejecutivo, su vehículo tiene incidencias.';
-            case 'Completado':
-                return 'Su vehículo está listo, acérquese a su ejecutivo.';
+                return 'Se encontraron fallos en su diagnóstico, diríjase donde el ejecutivo.';
+            case 'En Proceso':
             case 'Aprobado':
-                return 'Se indicó al mecánico que las incidencias están aprobadas.';
-            case 'Parcial':
-                return 'Se indicó al mecánico que algunas incidencias fueron aprobadas.';
             case 'Rechazado':
-                return 'Se indicó al mecánico que las incidencias están rechazadas.';
+            case 'Parcial':
+                return 'Nuestros técnicos están realizando los servicios solicitados.';
+            case 'Completado':
+                return 'Su vehículo está listo para ser retirado, diríjase donde su ejecutivo.';
             default:
                 return '';
         }

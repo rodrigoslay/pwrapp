@@ -6,6 +6,7 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
@@ -47,17 +48,22 @@ class ProductController extends Controller
             'status' => 'required|boolean',
         ]);
 
-        Product::create([
-            'sku' => $request->sku,
-            'name' => $request->name,
-            'price' => $request->price,
-            'inventory' => $request->inventory,
-            'status' => $request->status,
-            'created_by' => auth()->user()->id,
-        ]);
+        try {
+            Product::create([
+                'sku' => $request->sku,
+                'name' => $request->name,
+                'price' => $request->price,
+                'inventory' => $request->inventory,
+                'status' => $request->status,
+                'created_by' => auth()->user()->id,
+            ]);
 
-        Alert::success('Éxito', 'Producto creado con éxito');
-        return redirect()->route('products.index');
+            Alert::success('Éxito', 'Producto creado con éxito');
+            return redirect()->route('products.index');
+        } catch (\Exception $e) {
+            Log::error('Error al crear el producto: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al crear el producto');
+        }
     }
 
     public function edit(Product $product)
@@ -75,23 +81,33 @@ class ProductController extends Controller
             'status' => 'required|boolean',
         ]);
 
-        $product->update([
-            'sku' => $request->sku,
-            'name' => $request->name,
-            'price' => $request->price,
-            'inventory' => $request->inventory,
-            'status' => $request->status,
-            'updated_by' => auth()->user()->id,
-        ]);
+        try {
+            $product->update([
+                'sku' => $request->sku,
+                'name' => $request->name,
+                'price' => $request->price,
+                'inventory' => $request->inventory,
+                'status' => $request->status,
+                'updated_by' => auth()->user()->id,
+            ]);
 
-        Alert::success('Éxito', 'Producto actualizado con éxito');
-        return redirect()->route('products.index');
+            Alert::success('Éxito', 'Producto actualizado con éxito');
+            return redirect()->route('products.index');
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar el producto: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al actualizar el producto');
+        }
     }
 
     public function destroy(Product $product)
     {
-        $product->delete();
-        Alert::success('Éxito', 'Producto eliminado con éxito');
-        return redirect()->route('products.index');
+        try {
+            $product->delete();
+            Alert::success('Éxito', 'Producto eliminado con éxito');
+            return redirect()->route('products.index');
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar el producto: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al eliminar el producto');
+        }
     }
 }

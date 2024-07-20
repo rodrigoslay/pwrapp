@@ -36,7 +36,11 @@
        </div>
    </div>
 @stop
+@section('footer')
 
+    Realizado por <a href="https://www.slaymultimedios.com/"><strong>Slay Multimedios</strong></a> - Laravel v{{ Illuminate\Foundation\Application::VERSION }} (PHP v{{ PHP_VERSION }})<br>
+    &copy; 2024 PWRTALLER Versión 1.0. Todos los derechos reservados.
+@stop
 @section('css')
     <link rel="stylesheet" href="/css/admin_custom.css">
 @stop
@@ -53,16 +57,59 @@
             responsive: true,
             processing: true,
             serverSide: true,
-            autoWidth: false,
+            autoWidth: true,
             ajax: "{{ route('mechanic-work-orders.list') }}",
             columns:[
                 {data: 'id', name: 'id'},
                 {data: 'client', name: 'client'},
                 {data: 'vehicle', name: 'vehicle'},
-                {data: 'service_status', name: 'service_status', className: "text-center"},
-                {data: 'product_status', name: 'product_status', className: "text-center"},
-                {data: 'time', name: 'time', className: "text-center"},
-                {data: 'status', name: 'status', className: "text-center"},
+                {data: 'service_status', name: 'service_status', render: function(data, type, row) {
+                    if (data === 'Completado') {
+                        return '<span class="badge badge-success">Completado</span>';
+                    } else if (data === 'Iniciado') {
+                        return '<span class="badge badge-warning">Iniciado</span>';
+                    } else if (data === 'Pendiente') {
+                        return '<span class="badge badge-danger">Pendiente</span>';
+                    }else{
+                        return '<span class="badge badge-warning">Sin Servicios</span>';
+                    }
+                }},
+                {data: 'product_status', name: 'product_status', render: function(data, type, row) {
+                    if (data === 'Entregado') {
+                        return '<span class="badge badge-success">Entregado</span>';
+                    } else if (data === 'Parcialmente Entregado') {
+                        return '<span class="badge badge-warning">Parcialmente Entregado</span>';
+                    } else if (data === 'Pendiente') {
+                        return '<span class="badge badge-danger">Pendiente</span>';
+                    }else{
+                        return '<span class="badge badge-warning">Sin Productos</span>';
+                    }
+                }},
+                {data: 'time', name: 'time'},
+                {data: 'status', name: 'status', render: function(data, type, row) {
+                    let badgeClass = '';
+                    switch(data) {
+                        case 'Completado':
+                            badgeClass = 'badge-success';
+                            break;
+                        case 'Facturado':
+                            badgeClass = 'badge-dark';
+                            break;
+                        case 'Rechazado':
+                            badgeClass = 'badge-danger';
+                            break;
+                        case 'Iniciado':
+                        case 'Incidencias':
+                        case 'Aprobado':
+                        case 'Parcial':
+                            badgeClass = 'badge-warning';
+                            break;
+                        default:
+                            badgeClass = 'badge-warning';
+                            break;
+                    }
+                    return `<span class="badge ${badgeClass}">${data}</span>`;
+                }},
                 {data: 'action', name: 'action', orderable: false, searchable: false, className: "text-center"},
             ],
             order: [[0, "desc"]]

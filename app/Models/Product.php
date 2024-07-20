@@ -9,11 +9,6 @@ class Product extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'sku',
         'name',
@@ -28,7 +23,7 @@ class Product extends Model
     public function workOrders()
     {
         return $this->belongsToMany(WorkOrder::class, 'product_work_order')
-                    ->withPivot('quantity', 'status')
+                    ->withPivot('quantity', 'status', 'discount')
                     ->withTimestamps();
     }
 }

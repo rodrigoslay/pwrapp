@@ -6,6 +6,7 @@ use App\Models\Incident;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\Log;
 
 class IncidentController extends Controller
 {
@@ -44,14 +45,19 @@ class IncidentController extends Controller
             'status' => 'required|boolean',
         ]);
 
-        Incident::create([
-            'name' => $request->name,
-            'status' => $request->status,
-            'created_by' => auth()->user()->id,
-        ]);
+        try {
+            Incident::create([
+                'name' => $request->name,
+                'status' => $request->status,
+                'created_by' => auth()->user()->id,
+            ]);
 
-        Alert::success('Éxito', 'Incidente creado con éxito');
-        return redirect()->route('incidents.index');
+            Alert::success('Éxito', 'Incidente creado con éxito');
+            return redirect()->route('incidents.index');
+        } catch (\Exception $e) {
+            Log::error('Error al crear el incidente: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al crear el incidente');
+        }
     }
 
     public function edit(Incident $incident)
@@ -66,20 +72,30 @@ class IncidentController extends Controller
             'status' => 'required|boolean',
         ]);
 
-        $incident->update([
-            'name' => $request->name,
-            'status' => $request->status,
-            'updated_by' => auth()->user()->id,
-        ]);
+        try {
+            $incident->update([
+                'name' => $request->name,
+                'status' => $request->status,
+                'updated_by' => auth()->user()->id,
+            ]);
 
-        Alert::success('Éxito', 'Incidente actualizado con éxito');
-        return redirect()->route('incidents.index');
+            Alert::success('Éxito', 'Incidente actualizado con éxito');
+            return redirect()->route('incidents.index');
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar el incidente: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al actualizar el incidente');
+        }
     }
 
     public function destroy(Incident $incident)
     {
-        $incident->delete();
-        Alert::success('Éxito', 'Incidente eliminado con éxito');
-        return redirect()->route('incidents.index');
+        try {
+            $incident->delete();
+            Alert::success('Éxito', 'Incidente eliminado con éxito');
+            return redirect()->route('incidents.index');
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar el incidente: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al eliminar el incidente');
+        }
     }
 }

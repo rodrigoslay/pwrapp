@@ -1,104 +1,124 @@
-@extends('adminlte::auth.auth-page', ['auth_type' => 'login'])
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ config('app.name') }}</title>
 
-@section('adminlte_css_pre')
     <link rel="stylesheet" href="{{ asset('vendor/icheck-bootstrap/icheck-bootstrap.min.css') }}">
-@stop
+    <link rel="stylesheet" href="{{ asset('vendor/fontawesome-free/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/overlayScrollbars/css/OverlayScrollbars.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/adminlte/dist/css/adminlte.min.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
 
-@php( $login_url = View::getSection('login_url') ?? config('adminlte.login_url', 'login') )
-@php( $register_url = View::getSection('register_url') ?? config('adminlte.register_url', 'register') )
-@php( $password_reset_url = View::getSection('password_reset_url') ?? config('adminlte.password_reset_url', 'password/reset') )
-
-@if (config('adminlte.use_route_url', false))
-    @php( $login_url = $login_url ? route($login_url) : '' )
-    @php( $register_url = $register_url ? route($register_url) : '' )
-    @php( $password_reset_url = $password_reset_url ? route($password_reset_url) : '' )
-@else
-    @php( $login_url = $login_url ? url($login_url) : '' )
-    @php( $register_url = $register_url ? url($register_url) : '' )
-    @php( $password_reset_url = $password_reset_url ? url($password_reset_url) : '' )
-@endif
-
-@section('auth_header', __('adminlte::adminlte.login_message'))
-
-@section('auth_body')
-    <form action="{{ $login_url }}" method="post">
-        @csrf
-
-        {{-- Email field --}}
-        <div class="input-group mb-3">
-            <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
-                   value="{{ old('email') }}" placeholder="{{ __('adminlte::adminlte.email') }}" autofocus>
-
-            <div class="input-group-append">
-                <div class="input-group-text">
-                    <span class="fas fa-envelope {{ config('adminlte.classes_auth_icon', '') }}"></span>
-                </div>
-            </div>
-
-            @error('email')
-                <span class="invalid-feedback" role="alert">
-                    <strong>{{ $message }}</strong>
-                </span>
-            @enderror
-        </div>
-
-        {{-- Password field --}}
-        <div class="input-group mb-3">
-            <input type="password" name="password" class="form-control @error('password') is-invalid @enderror"
-                   placeholder="{{ __('adminlte::adminlte.password') }}">
-
-            <div class="input-group-append">
-                <div class="input-group-text">
-                    <span class="fas fa-lock {{ config('adminlte.classes_auth_icon', '') }}"></span>
-                </div>
-            </div>
-
-            @error('password')
-                <span class="invalid-feedback" role="alert">
-                    <strong>{{ $message }}</strong>
-                </span>
-            @enderror
-        </div>
-
-        {{-- Login field --}}
-        <div class="row">
-            <div class="col-7">
-                <div class="icheck-primary" title="{{ __('adminlte::adminlte.remember_me_hint') }}">
-                    <input type="checkbox" name="remember" id="remember" {{ old('remember') ? 'checked' : '' }}>
-
-                    <label for="remember">
-                        {{ __('adminlte::adminlte.remember_me') }}
-                    </label>
-                </div>
-            </div>
-
-            <div class="col-5">
-                <button type=submit class="btn btn-block {{ config('adminlte.classes_auth_btn', 'btn-flat btn-primary') }}">
-                    <span class="fas fa-sign-in-alt"></span>
-                    {{ __('adminlte::adminlte.sign_in') }}
-                </button>
-            </div>
-        </div>
-
-    </form>
-@stop
-
-@section('auth_footer')
-    {{-- Password reset link --}}
-    @if($password_reset_url)
-        <p class="my-0">
-            <a href="{{ $password_reset_url }}">
-                {{ __('adminlte::adminlte.i_forgot_my_password') }}
+    <style>
+        .login-page {
+            background-color: #1a202c;
+        }
+        .login-box {
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .card {
+            border-radius: 8px;
+        }
+        .card-body {
+            background-color: #2d3748;
+            color: #f4f6f9;
+        }
+        .form-control {
+            background-color: #1a202c;
+            border: 1px solid #4a5568;
+            color: #f4f6f9;
+        }
+        .input-group-text {
+            background-color: #1a202c;
+            border: 1px solid #4a5568;
+            color: #ecc94b;
+        }
+        .btn-primary {
+            background-color: #ecc94b;
+            border-color: #ecc94b;
+            color: #1a202c;
+        }
+        .btn-primary:hover {
+            background-color: #d69e2e;
+            border-color: #d69e2e;
+        }
+        .invalid-feedback {
+            color: #e53e3e;
+        }
+        .icheck-primary label {
+            color: #f4f6f9;
+        }
+        .icheck-primary input[type="checkbox"]:checked + label::before {
+            background-color: #ecc94b;
+            border-color: #ecc94b;
+        }
+    </style>
+</head>
+<body class="login-page">
+    <div class="login-box">
+        <div class="login-logo">
+            <a href="{{ url('/home') }}">
+                <img src="https://www.powercars.cl/wp-content/uploads/2024/05/logopowercars.webp" alt="Admin Logo" height="50">
+                <b>PWR</b>APP
             </a>
-        </p>
-    @endif
+        </div>
+        <div class="card card-outline card-primary">
+            <div class="card-header text-center">
+                <h3 class="card-title">Autenticarse para iniciar sesión</h3>
+            </div>
+            <div class="card-body login-card-body">
+                <form action="{{ url('/login') }}" method="post">
+                    @csrf
+                    <div class="input-group mb-3">
+                        <input type="email" name="email" class="form-control" value="" placeholder="Email" autofocus>
+                        <div class="input-group-append">
+                            <div class="input-group-text">
+                                <span class="fas fa-envelope"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-group mb-3">
+                        <input type="password" name="password" class="form-control" placeholder="Contraseña">
+                        <div class="input-group-append">
+                            <div class="input-group-text">
+                                <span class="fas fa-lock"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-7">
+                            <div class="icheck-primary" title="Mantenerme autenticado indefinidamente o hasta cerrar la sesión manualmente">
+                                <input type="checkbox" name="remember" id="remember">
+                                <label for="remember">Recordarme</label>
+                            </div>
+                        </div>
+                        <div class="col-5">
+                            <button type="submit" class="btn btn-block btn-flat btn-primary">
+                                <span class="fas fa-sign-in-alt"></span> Acceder
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer">
+                <p class="my-0">
+                    <a href="{{ url('/password/reset') }}">Olvidé mi contraseña</a>
+                </p>
+                <p class="my-0">
+                    <a href="{{ url('/register') }}">Crear una nueva cuenta</a>
+                </p>
+            </div>
+        </div>
+    </div>
 
-    {{-- Register link --}}
-    @if($register_url)
-        <p class="my-0">
-            <a href="{{ $register_url }}">
-                {{ __('adminlte::adminlte.register_a_new_membership') }}
-            </a>
-        </p>
-    @endif
-@stop
+    <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
+    <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ asset('vendor/overlayScrollbars/js/jquery.overlayScrollbars.min.js') }}"></script>
+    <script src="{{ asset('vendor/adminlte/dist/js/adminlte.min.js') }}"></script>
+</body>
+</html>

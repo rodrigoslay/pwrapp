@@ -21,7 +21,7 @@ class WorkOrder extends Model
         'review',
         'entry_mileage',
         'exit_mileage',
-        'revisiones',
+        'scheduling', // Cambio aquí
     ];
 
     public function client()
@@ -60,16 +60,15 @@ class WorkOrder extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function executive()
+    {
+        return $this->belongsTo(User::class, 'executive_id');
+    }
+
     public function incidents()
     {
         return $this->belongsToMany(Incident::class, 'incident_work_order')
-            ->withPivot('observation', 'reported_by', 'approved', 'approved_by')
-            ->withTimestamps();
-    }
-    public function brands()
-    {
-        return $this->belongsToMany(Brand::class, 'brand_work_order')
-                    ->withPivot('car_model_id', 'year');
+                    ->withPivot('observation', 'reported_by', 'approved', 'approved_by')
+                    ->withTimestamps();
     }
 }
-

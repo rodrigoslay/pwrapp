@@ -25,11 +25,11 @@
                                <th>ID</th>
                                <th>Cliente</th>
                                <th>Vehículo</th>
-                               <th>Estado de Servicio</th>
-                               <th>Estado de Producto</th>
+                               <th>Servicio</th>
+                               <th>Producto</th>
                                <th>Tiempo</th>
-                               <th>Estado OT</th>
-                               <th>Acciones</th>
+                               <th>OT</th>
+                               <th>Detalle</th>
                            </tr>
                        </thead>
                    </table>
@@ -38,18 +38,24 @@
        </div>
    </div>
 @stop
+@section('footer')
 
+    Realizado por <a href="https://www.slaymultimedios.com/"><strong>Slay Multimedios</strong></a> - Laravel v{{ Illuminate\Foundation\Application::VERSION }} (PHP v{{ PHP_VERSION }})<br>
+    &copy; 2024 PWRTALLER Versión 1.0. Todos los derechos reservados.
+@stop
 @section('css')
     <link rel="stylesheet" href="/css/admin_custom.css">
 @stop
 
 @section('js')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
 <script>
     $.ajaxSetup({
         headers:{
             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
         }
-    })
+    });
+
     $(document).ready(function(){
         var table = $('#tblData').DataTable({
             responsive: true,
@@ -66,8 +72,10 @@
                         return '<span class="badge badge-success">Completado</span>';
                     } else if (data === 'Iniciado') {
                         return '<span class="badge badge-warning">Iniciado</span>';
-                    } else {
+                    } else if (data === 'Pendiente') {
                         return '<span class="badge badge-danger">Pendiente</span>';
+                    }else{
+                        return '<span class="badge badge-warning">Sin Servicios</span>';
                     }
                 }},
                 {data: 'product_status', name: 'product_status', render: function(data, type, row) {
@@ -75,8 +83,10 @@
                         return '<span class="badge badge-success">Entregado</span>';
                     } else if (data === 'Parcialmente Entregado') {
                         return '<span class="badge badge-warning">Parcialmente Entregado</span>';
-                    } else {
+                    } else if (data === 'Pendiente') {
                         return '<span class="badge badge-danger">Pendiente</span>';
+                    }else{
+                        return '<span class="badge badge-warning">Sin Productos</span>';
                     }
                 }},
                 {data: 'time', name: 'time'},
@@ -89,13 +99,12 @@
                         case 'Facturado':
                             badgeClass = 'badge-dark';
                             break;
-                        case 'Abierto':
-                        case 'Desaprobado':
+                        case 'Rechazado':
                             badgeClass = 'badge-danger';
                             break;
-                        case 'Comenzó':
+                        case 'Iniciado':
                         case 'Incidencias':
-                        case 'Aprobada':
+                        case 'Aprobado':
                         case 'Parcial':
                             badgeClass = 'badge-warning';
                             break;

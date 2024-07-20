@@ -20,4 +20,12 @@ class Brand extends Model
         'created_by',
         'updated_by',
     ];
-}
+
+    /**
+     * Get the car models for the brand.
+     */
+    public function carModels()
+    {
+        return $this->hasMany(CarModel::class);
+    }
+};

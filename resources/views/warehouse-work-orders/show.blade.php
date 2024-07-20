@@ -22,6 +22,10 @@
 
                     <div class="row invoice-info">
                         <div class="col-sm-4 invoice-col">
+                            <img src="{{ asset('img/logopowercars_invoice.webp') }}" alt="Logo Powercars" class="img-fluid" style="max-height: 100px;">
+                            <p><b>Ejecutivo:</b> {{ $workOrder->createdBy->name ?? 'No asignado' }}</p>
+                        </div>
+                        <div class="col-sm-4 invoice-col">
                             Cliente
                             <address>
                                 <strong>{{ $workOrder->client->name }}</strong><br>
@@ -68,7 +72,7 @@
                                             <td>{{ $product->name }}</td>
                                             <td>{{ $product->pivot->quantity }}</td>
                                             <td>
-                                                @if ($product->pivot->status == 'pendiente')
+                                                @if ($workOrder->status !== 'Facturado')
                                                     <form class="update-product-status-form" action="{{ route('warehouse-work-orders.update-product-status', [$workOrder->id, $product->id]) }}" method="POST">
                                                         @csrf
                                                         @method('PUT')
@@ -78,7 +82,9 @@
                                                         </select>
                                                     </form>
                                                 @else
-                                                    <span class="badge badge-success">Entregado</span>
+                                                    <span class="badge badge-{{ $product->pivot->status == 'entregado' ? 'success' : 'danger' }}">
+                                                        {{ ucfirst($product->pivot->status) }}
+                                                    </span>
                                                 @endif
                                             </td>
                                         </tr>
@@ -102,7 +108,14 @@
     </div>
 
 @stop
+@section('footer')
 
+    Realizado por <a href="https://www.slaymultimedios.com/"><strong>Slay Multimedios</strong></a> - Laravel v{{ Illuminate\Foundation\Application::VERSION }} (PHP v{{ PHP_VERSION }})<br>
+    &copy; 2024 PWRTALLER Versión 1.0. Todos los derechos reservados.
+@stop
+@section('css')
+    <link rel="stylesheet" href="/css/admin_custom.css">
+@stop
 @section('js')
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
@@ -123,7 +136,7 @@
                         text: response.message,
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            updateWorkOrderStatus(); 
+                            updateWorkOrderStatus();
                         }
                     });
                 },

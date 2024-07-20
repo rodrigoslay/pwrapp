@@ -155,6 +155,12 @@
         </div>
     </div>
 @stop
+@section('footer')
+
+    Realizado por <a href="https://www.slaymultimedios.com/"><strong>Slay Multimedios</strong></a> - Laravel v{{ Illuminate\Foundation\Application::VERSION }} (PHP v{{ PHP_VERSION }})<br>
+    &copy; 2024 PWRTALLER Versión 1.0. Todos los derechos reservados.
+
+@stop
 
 @section('css')
     <link rel="stylesheet" href="/css/admin_custom.css">

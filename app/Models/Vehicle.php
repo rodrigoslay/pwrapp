@@ -9,18 +9,13 @@ class Vehicle extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'license_plate',
         'client_id',
         'registration_date',
         'photo',
         'brand_id',
-        'model',
+        'model', // Asegúrate de que este campo sea model_id si estás usando una relación con CarModel
         'chassis',
         'color',
         'kilometers',
@@ -29,39 +24,26 @@ class Vehicle extends Model
         'status',
     ];
 
-    public function clients()
-    {
-        return $this->belongsToMany(Client::class, 'client_vehicle')
-                    ->withTimestamps();
-    }
-
-    /**
-     * Get the client that owns the vehicle.
-     */
     public function client()
     {
         return $this->belongsTo(Client::class);
     }
 
-    /**
-     * Get the brand that the vehicle belongs to.
-     */
     public function brand()
     {
         return $this->belongsTo(Brand::class);
     }
 
-    /**
-     * Get the user who created the vehicle.
-     */
+    public function model()
+    {
+        return $this->belongsTo(CarModel::class, 'model');
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /**
-     * Get the user who updated the vehicle.
-     */
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');

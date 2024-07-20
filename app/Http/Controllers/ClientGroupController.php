@@ -6,6 +6,7 @@ use App\Models\ClientGroup;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\Log;
 
 class ClientGroupController extends Controller
 {
@@ -39,20 +40,16 @@ class ClientGroupController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'discount_percentage' => 'required|numeric',
-            'status' => 'required|boolean',
-        ]);
+        $validatedData = $request->validate($this->rules(), $this->messages());
 
-        ClientGroup::create([
-            'name' => $request->name,
-            'discount_percentage' => $request->discount_percentage,
-            'status' => $request->status,
-        ]);
-
-        Alert::success('Éxito', 'Grupo de Clientes creado con éxito');
-        return redirect()->route('client-groups.index');
+        try {
+            ClientGroup::create($validatedData);
+            Alert::success('Éxito', 'Grupo de Clientes creado con éxito');
+            return redirect()->route('client-groups.index');
+        } catch (\Exception $e) {
+            Log::error('Error al crear el grupo de clientes: ' . $e->getMessage());
+            return redirect()->route('client-groups.index')->with('error', 'Error al crear el grupo de clientes: ' . $e->getMessage());
+        }
     }
 
     public function edit(ClientGroup $clientGroup)
@@ -62,26 +59,48 @@ class ClientGroupController extends Controller
 
     public function update(Request $request, ClientGroup $clientGroup)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'discount_percentage' => 'required|numeric',
-            'status' => 'required|boolean',
-        ]);
+        $validatedData = $request->validate($this->rules(), $this->messages());
 
-        $clientGroup->update([
-            'name' => $request->name,
-            'discount_percentage' => $request->discount_percentage,
-            'status' => $request->status,
-        ]);
-
-        Alert::success('Éxito', 'Grupo de Clientes actualizado con éxito');
-        return redirect()->route('client-groups.index');
+        try {
+            $clientGroup->update($validatedData);
+            Alert::success('Éxito', 'Grupo de Clientes actualizado con éxito');
+            return redirect()->route('client-groups.index');
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar el grupo de clientes: ' . $e->getMessage());
+            return redirect()->route('client-groups.index')->with('error', 'Error al actualizar el grupo de clientes: ' . $e->getMessage());
+        }
     }
 
     public function destroy(ClientGroup $clientGroup)
     {
-        $clientGroup->delete();
-        Alert::success('Éxito', 'Grupo de Clientes eliminado con éxito');
-        return redirect()->route('client-groups.index');
+        try {
+            $clientGroup->delete();
+            Alert::success('Éxito', 'Grupo de Clientes eliminado con éxito');
+            return redirect()->route('client-groups.index');
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar el grupo de clientes: ' . $e->getMessage());
+            return redirect()->route('client-groups.index')->with('error', 'Error al eliminar el grupo de clientes: ' . $e->getMessage());
+        }
+    }
+
+    private function rules()
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'discount_percentage' => 'required|numeric',
+            'status' => 'required|boolean',
+        ];
+    }
+
+    private function messages()
+    {
+        return [
+            'name.required' => 'El nombre es obligatorio.',
+            'name.max' => 'El nombre no debe exceder los 255 caracteres.',
+            'discount_percentage.required' => 'El porcentaje de descuento es obligatorio.',
+            'discount_percentage.numeric' => 'El porcentaje de descuento debe ser un número.',
+            'status.required' => 'El estado es obligatorio.',
+            'status.boolean' => 'El estado debe ser verdadero o falso.',
+        ];
     }
 }

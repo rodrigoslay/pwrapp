@@ -1,5 +1,9 @@
 @extends('adminlte::auth.auth-page', ['auth_type' => 'register'])
 
+@section('adminlte_css_pre')
+    <link rel="stylesheet" href="{{ asset('vendor/icheck-bootstrap/icheck-bootstrap.min.css') }}">
+@stop
+
 @php( $login_url = View::getSection('login_url') ?? config('adminlte.login_url', 'login') )
 @php( $register_url = View::getSection('register_url') ?? config('adminlte.register_url', 'register') )
 
@@ -105,4 +109,56 @@
             {{ __('adminlte::adminlte.i_already_have_a_membership') }}
         </a>
     </p>
+@stop
+
+@section('adminlte_css_pre')
+    <link rel="stylesheet" href="{{ asset('vendor/icheck-bootstrap/icheck-bootstrap.min.css') }}">
+@stop
+
+@section('adminlte_css')
+    <style>
+        .register-page {
+            background-color: #1a202c;
+        }
+        .register-box {
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .card {
+            border-radius: 8px;
+        }
+        .card-body {
+            background-color: #2d3748;
+            color: #f4f6f9;
+        }
+        .form-control {
+            background-color: #1a202c;
+            border: 1px solid #4a5568;
+            color: #f4f6f9;
+        }
+        .input-group-text {
+            background-color: #1a202c;
+            border: 1px solid #4a5568;
+            color: #ecc94b;
+        }
+        .btn-primary {
+            background-color: #ecc94b;
+            border-color: #ecc94b;
+            color: #1a202c;
+        }
+        .btn-primary:hover {
+            background-color: #d69e2e;
+            border-color: #d69e2e;
+        }
+        .invalid-feedback {
+            color: #e53e3e;
+        }
+        .icheck-primary label {
+            color: #f4f6f9;
+        }
+        .icheck-primary input[type="checkbox"]:checked + label::before {
+            background-color: #ecc94b;
+            border-color: #ecc94b;
+        }
+    </style>
 @stop

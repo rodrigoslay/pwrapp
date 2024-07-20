@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,14 +12,21 @@ class RevisionFault extends Model
     protected $fillable = [
         'revision_id',
         'fallo',
+        'solucion',
+        'recomendacion',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
-    public function revisions()
+    public function revision()
     {
-        return $this->belongsToMany(Revision::class, 'revision_work_order', 'fault_id', 'revision_id')
-                    ->withPivot('work_order_id', 'status');
+        return $this->belongsTo(Revision::class, 'revision_id');
     }
 
+    /*public function workOrders()
+    {
+        return $this->belongsToMany(WorkOrder::class, 'revision_work_order', 'fault_id', 'work_order_id')
+                    ->withPivot('revision_id', 'status')
+                    ->withTimestamps();
+    }*/
 }

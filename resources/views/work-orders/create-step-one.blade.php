@@ -7,7 +7,7 @@
 @stop
 
 @section('content')
-<div class="container-fluid">
+    <div class="container-fluid">
         <div class="col-md-12">
             <div class="card card-default">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -50,21 +50,49 @@
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label for="vehicle_id">Patente del Vehículo</label>
-                                                <select name="vehicle_id" id="vehicle_id" class="form-control select2" required>
+                                                <select name="vehicle_id" id="vehicle_id" class="form-control select2"
+                                                    required>
                                                     <option value="">Seleccione una opción</option>
                                                     @foreach ($vehicles as $vehicle)
-                                                        <option value="{{ $vehicle->id }}">{{ $vehicle->license_plate }}</option>
+                                                        <option value="{{ $vehicle->id }}">{{ $vehicle->license_plate }}
+                                                        </option>
                                                     @endforeach
                                                 </select>
                                             </div>
                                             <div class="form-group">
                                                 <label for="client_id">Cliente (RUT)</label>
-                                                <select name="client_id" id="client_id" class="form-control select2" required>
+                                                <select name="client_id" id="client_id" class="form-control select2"
+                                                    required>
                                                     <option value="">Seleccione una opción</option>
                                                     @foreach ($clients as $client)
-                                                        <option value="{{ $client->id }}" data-name="{{ $client->name }}">{{ $client->rut }}</option>
+                                                        <option value="{{ $client->id }}"
+                                                            data-name="{{ $client->name }}">{{ $client->rut }}</option>
                                                     @endforeach
                                                 </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <div class="col-md-12">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="radio" name="order_type"
+                                                            id="create_ot" value="create_ot" checked>
+                                                        <label class="form-check-label" for="create_ot">Crear OT</label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="radio" name="order_type"
+                                                            id="cotizacion" value="cotizacion">
+                                                        <label class="form-check-label" for="cotizacion">Cotización</label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="radio" name="order_type"
+                                                            id="agendar" value="agendar">
+                                                        <label class="form-check-label" for="agendar">Agendar</label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input type="datetime-local" id="scheduling" name="scheduling"
+                                                            class="form-control" placeholder="Fecha y hora"
+                                                            style="display:none;" min="{{ now()->format('Y-m-d\TH:i') }}">
+                                                    </div>
+                                                </div>
                                             </div>
                                             <button type="submit" class="btn btn-primary">Siguiente</button>
                                         </div>
@@ -104,8 +132,11 @@
                                             <div class="row">
                                                 <div class="col-md-12">
                                                     <h5>Imagen del Vehículo</h5>
-                                                    <img id="vehicle_image" src="" alt="Imagen del Vehículo" class="img-fluid">
-                                                    <p id="no_image_message" class="d-none">El vehículo no tiene foto. <a href="#" id="add_image_link">Haz clic aquí</a> para agregar una.</p>
+                                                    <img id="vehicle_image" src="" alt="Imagen del Vehículo"
+                                                        class="img-fluid">
+                                                    <p id="no_image_message" class="d-none">El vehículo no tiene foto. <a
+                                                            href="#" id="add_image_link">Haz clic aquí</a> para
+                                                        agregar una.</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -123,7 +154,8 @@
     </div>
 
     <!-- Modal para agregar cliente -->
-    <div class="modal fade" id="addClientModal" tabindex="-1" role="dialog" aria-labelledby="addClientModalLabel" aria-hidden="true">
+    <div class="modal fade" id="addClientModal" tabindex="-1" role="dialog" aria-labelledby="addClientModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <form id="add-client-form" action="{{ route('clients.store') }}" method="POST" class="ajax-form">
@@ -147,10 +179,12 @@
                         <div class="form-group">
                             <label for="email">Email</label>
                             <input type="email" name="email" id="email" class="form-control" required>
+                            <small id="email_feedback" class="form-text"></small>
                         </div>
                         <div class="form-group">
                             <label for="phone">Teléfono</label>
                             <input type="text" name="phone" id="phone" class="form-control" required>
+                            <small id="phone_feedback" class="form-text"></small>
                         </div>
                         <div class="form-group">
                             <label for="client_group_id">Grupo de Cliente</label>
@@ -177,12 +211,14 @@
         </div>
     </div>
 
+
     <!-- Modal para agregar vehículo -->
     <div class="modal fade" id="addVehicleModal" tabindex="-1" role="dialog" aria-labelledby="addVehicleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <form id="add-vehicle-form" action="{{ route('vehicles.store') }}" method="POST" enctype="multipart/form-data">
+                <form id="add-vehicle-form" action="{{ route('vehicles.store') }}" method="POST"
+                    enctype="multipart/form-data">
                     @csrf
                     <div class="modal-header">
                         <h5 class="modal-title" id="addVehicleModalLabel">Agregar Vehículo</h5>
@@ -207,7 +243,6 @@
                         </div>
                         <div class="form-group">
                             <label for="model">Modelo</label>
-
                             <select name="model" id="model" class="form-control select2" required>
                             </select>
                         </div>
@@ -221,12 +256,11 @@
                         </div>
                         <div class="form-group">
                             <label for="kilometers">Kilómetros</label>
-                            <input type="number" name="kilometers" id="kilometers" class="form-control"value="0" >
+                            <input type="number" name="kilometers" id="kilometers" class="form-control"value="0">
                         </div>
                         <div class="form-group">
                             <label for="registration_date">Fecha de Registro</label>
                             <input type="date" name="registration_date" id="registration_date" class="form-control">
-
                         </div>
                         <div class="form-group">
                             <label for="photo">Foto del Vehículo</label>
@@ -234,7 +268,8 @@
                         </div>
                         <div class="form-group">
                             <label for="client_id_vehicle">Cliente (RUT)</label>
-                            <select name="client_id_vehicle" id="client_id_vehicle" class="form-control select2" required>
+                            <select name="client_id_vehicle" id="client_id_vehicle" class="form-control select2"
+                                required>
                                 @foreach ($clients as $client)
                                     <option value="{{ $client->id }}">{{ $client->rut }}</option>
                                 @endforeach
@@ -246,7 +281,6 @@
                         <button type="submit" class="btn btn-primary">Guardar Vehículo</button>
                     </div>
                 </form>
-
             </div>
         </div>
     </div>
@@ -282,54 +316,55 @@
                         <button type="submit" class="btn btn-primary">Guardar Marca</button>
                     </div>
                 </form>
-
             </div>
         </div>
     </div>
 
     <!-- Modal para agregar modelo -->
-<div class="modal fade" id="addModelModal" tabindex="-1" role="dialog" aria-labelledby="addModelModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <form id="add-model-form" action="{{ route('car-models.store') }}" method="POST">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addModelModalLabel">Agregar Modelo</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <!-- Campos del formulario para agregar modelo -->
-                    <div class="form-group">
-                        <label for="brand_id_for_model">Marca</label>
-                        <select name="brand_id" id="brand_id_for_model" class="form-control select2" required>
-                            @foreach ($brands as $brand)
-                                <option value="{{ $brand->id }}">{{ $brand->name }}</option>
-                            @endforeach
-                        </select>
+    <div class="modal fade" id="addModelModal" tabindex="-1" role="dialog" aria-labelledby="addModelModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form id="add-model-form" action="{{ route('car-models.store') }}" method="POST">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addModelModalLabel">Agregar Modelo</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
                     </div>
-                    <div class="form-group">
-                        <label for="model">Nombre del Modelo</label>
-                        <input type="text" name="model" id="model" class="form-control" required>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="brand_id_for_model">Marca</label>
+                            <select name="brand_id" id="brand_id_for_model" class="form-control select2" required>
+                                @foreach ($brands as $brand)
+                                    <option value="{{ $brand->id }}">{{ $brand->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="model">Nombre del Modelo</label>
+                            <input type="text" name="model" id="model" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="year">Año</label>
+                            <input type="number" name="year" id="year" class="form-control" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="year">Año</label>
-                        <input type="number" name="year" id="year" class="form-control" required>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Modelo</button>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                    <button type="submit" class="btn btn-primary">Guardar Modelo</button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
-</div>
-
-
 @stop
+@section('footer')
 
+    Realizado por <a href="https://www.slaymultimedios.com/"><strong>Slay Multimedios</strong></a> - Laravel v{{ Illuminate\Foundation\Application::VERSION }} (PHP v{{ PHP_VERSION }})<br>
+    &copy; 2024 PWRTALLER Versión 1.0. Todos los derechos reservados.
+@stop
 @section('css')
     <link rel="stylesheet" href="https://unpkg.com/bs-stepper@1.7.0/dist/css/bs-stepper.min.css">
     <link rel="stylesheet" href="/css/admin_custom.css">
@@ -359,6 +394,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         // Función para validar el RUT
+        // Función para validar el RUT
         function validarRUT(rut) {
             rut = rut.replace(/\./g, '').replace('-', '').toUpperCase();
             let numero = rut.slice(0, -1);
@@ -383,6 +419,7 @@
             return digitoVerificador === dvCalculado;
         }
 
+
         // Función para validar la Patente
         function validarPatente(patente) {
             const formatoAntiguo = /^[A-Z]{2}[0-9]{4}$/;
@@ -391,22 +428,37 @@
             return formatoAntiguo.test(patente) || formatoNuevo.test(patente);
         }
 
+        // Función para transformar el texto a la primera letra de cada palabra en mayúscula y las siguientes en minúsculas
+        function capitalizarPrimeraLetra(texto) {
+            return texto.split(' ').map(function(palabra) {
+                return palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase();
+            }).join(' ');
+        }
         $(document).ready(function() {
             $('.select2').select2({
                 width: '100%'
             });
 
-            $('#vehicle_id').on('change', function () {
+            @if ($errors->any())
+                Swal.fire({
+                    icon: '{{ session('alert.type') }}',
+                    title: '{{ session('alert.title') }}',
+                    text: '{{ session('alert.message') }}',
+                });
+            @endif
+
+            $('#vehicle_id').on('change', function() {
                 var vehicleId = $(this).val();
                 if (vehicleId) {
-                    $.get('/vehicles/' + vehicleId, function (vehicle) {
+                    $.get('/vehicles/' + vehicleId, function(vehicle) {
                         $('#vehiculo_marca_text').text(vehicle.brand.name);
                         $('#vehiculo_modelo_text').text(vehicle.model);
                         $('#vehiculo_chasis_text').text(vehicle.chassis);
                         $('#vehiculo_kilometros_text').text(vehicle.kilometers);
                         $('#vehiculo_color_text').text(vehicle.color);
                         if (vehicle.photo) {
-                            $('#vehicle_image').attr('src', '/img/vehicles/' + vehicle.photo).show();
+                            $('#vehicle_image').attr('src', '/img/vehicles/' + vehicle.photo)
+                                .show();
                             $('#no_image_message').hide();
                         } else {
                             $('#vehicle_image').hide();
@@ -418,10 +470,10 @@
                 }
             });
 
-            $('#client_id').on('change', function () {
+            $('#client_id').on('change', function() {
                 var clientId = $(this).val();
                 if (clientId) {
-                    $.get('/clients/' + clientId, function (client) {
+                    $.get('/clients/' + clientId, function(client) {
                         $('#client_name_text').text(client.name);
                         $('#client_rut_text').text(client.rut);
                         $('#client_email_text').text(client.email);
@@ -437,13 +489,13 @@
                 var brandId = $(this).val();
                 if (brandId) {
                     $.get('/brands/' + brandId + '/models', function(response) {
-                        console.log(response.models);
                         if (response.success) {
                             var select = $('#model');
                             select.empty();
                             select.append('<option value="">Seleccione una opción</option>');
                             $.each(response.models, function(index, model) {
-                                select.append('<option value="' + model.id + '">' + model.model + ' - ' + model.year + '</option>');
+                                select.append('<option value="' + model.model + '">' + model
+                                    .model + ' - ' + model.year + '</option>');
                             });
                             select.trigger('change');
                         } else {
@@ -483,12 +535,31 @@
                 }
             });
 
-            $('#add_image_link').on('click', function (e) {
+            $('#phone').on('input', function() {
+                var phone = $(this).val();
+                if (/^56[29][0-9]{8}$/.test(phone)) {
+                    $('#phone_feedback').text('El teléfono es válido.').css('color', 'green');
+                } else {
+                    $('#phone_feedback').text('El teléfono no es válido.').css('color', 'red');
+                }
+            });
+
+            $('#email').on('input', function() {
+                var email = $(this).val();
+                var emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+                if (emailPattern.test(email)) {
+                    $('#email_feedback').text('El email es válido.').css('color', 'green');
+                } else {
+                    $('#email_feedback').text('El email no es válido.').css('color', 'red');
+                }
+            });
+
+            $('#add_image_link').on('click', function(e) {
                 e.preventDefault();
                 $('#addVehicleModal').modal('show');
             });
 
-            $('#addVehicleModal').on('shown.bs.modal', function () {
+            $('#addVehicleModal').on('shown.bs.modal', function() {
                 var registrationDateInput = $('#registration_date');
                 if (!registrationDateInput.val()) {
                     var defaultDate = '0000-00-00';
@@ -496,14 +567,14 @@
                 }
             });
 
-            $('#add-client-form').on('submit', function (e) {
+            $('#add-client-form').on('submit', function(e) {
                 e.preventDefault();
                 var form = $(this);
                 $.ajax({
                     type: form.attr('method'),
                     url: form.attr('action'),
                     data: form.serialize(),
-                    success: function (response) {
+                    success: function(response) {
                         if (response.success) {
                             $('#addClientModal').modal('hide');
                             Swal.fire({
@@ -515,11 +586,11 @@
                             });
                         }
                     },
-                    error: function (response) {
+                    error: function(response) {
                         if (response.status === 422) {
                             var errors = response.responseJSON.errors;
                             var errorMessages = '';
-                            $.each(errors, function (key, value) {
+                            $.each(errors, function(key, value) {
                                 errorMessages += value[0] + '<br>';
                             });
                             Swal.fire({
@@ -528,7 +599,6 @@
                                 html: errorMessages,
                             });
                         } else {
-                            console.log(response);
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
@@ -539,7 +609,7 @@
                 });
             });
 
-            $('#add-vehicle-form').on('submit', function (e) {
+            $('#add-vehicle-form').on('submit', function(e) {
                 e.preventDefault();
                 var form = $(this);
                 var formData = new FormData(this);
@@ -549,7 +619,7 @@
                     data: formData,
                     contentType: false,
                     processData: false,
-                    success: function (response) {
+                    success: function(response) {
                         if (response.success) {
                             $('#addVehicleModal').modal('hide');
                             Swal.fire({
@@ -561,22 +631,25 @@
                             });
                             $.ajax({
                                 type: 'GET',
-                                url: '{{ route("vehicles.list") }}',
-                                success: function (data) {
+                                url: '{{ route('vehicles.list') }}',
+                                success: function(data) {
                                     var select = $('#vehicle_id');
                                     select.empty();
-                                    $.each(data.vehicles, function (index, vehicle) {
-                                        select.append('<option value="' + vehicle.id + '">' + vehicle.license_plate + '</option>');
+                                    $.each(data.vehicles, function(index, vehicle) {
+                                        select.append('<option value="' +
+                                            vehicle.id + '">' + vehicle
+                                            .license_plate + '</option>'
+                                        );
                                     });
                                 }
                             });
                         }
                     },
-                    error: function (response) {
+                    error: function(response) {
                         if (response.status === 422) {
                             var errors = response.responseJSON.errors;
                             var errorMessages = '';
-                            $.each(errors, function (key, value) {
+                            $.each(errors, function(key, value) {
                                 errorMessages += value[0] + '<br>';
                             });
                             Swal.fire({
@@ -585,25 +658,25 @@
                                 html: errorMessages,
                             });
                         } else {
-                            console.log(response);
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
-                                text: response.responseJSON.message || 'Error al agregar el vehículo.',
+                                text: response.responseJSON.message ||
+                                    'Error al agregar el vehículo.',
                             });
                         }
                     }
                 });
             });
 
-            $('#add-brand-form').on('submit', function (e) {
+            $('#add-brand-form').on('submit', function(e) {
                 e.preventDefault();
                 var form = $(this);
                 $.ajax({
                     type: form.attr('method'),
                     url: form.attr('action'),
                     data: form.serialize(),
-                    success: function (response) {
+                    success: function(response) {
                         if (response.success) {
                             $('#addBrandModal').modal('hide');
                             Swal.fire({
@@ -615,25 +688,27 @@
                             });
                             $.ajax({
                                 type: 'GET',
-                                url: '{{ route("brands.list") }}',
-                                success: function (data) {
+                                url: '{{ route('brands.list') }}',
+                                success: function(data) {
                                     var select = $('#brand_id');
                                     select.empty();
                                     var brands = data.brands.sort(function(a, b) {
                                         return a.name.localeCompare(b.name);
                                     });
-                                    $.each(brands, function (index, brand) {
-                                        select.append('<option value="' + brand.id + '">' + brand.name + '</option>');
+                                    $.each(brands, function(index, brand) {
+                                        select.append('<option value="' +
+                                            brand.id + '">' + brand
+                                            .name + '</option>');
                                     });
                                 }
                             });
                         }
                     },
-                    error: function (response) {
+                    error: function(response) {
                         if (response.status === 422) {
                             var errors = response.responseJSON.errors;
                             var errorMessages = '';
-                            $.each(errors, function (key, value) {
+                            $.each(errors, function(key, value) {
                                 errorMessages += value[0] + '<br>';
                             });
                             Swal.fire({
@@ -642,7 +717,6 @@
                                 html: errorMessages,
                             });
                         } else {
-                            console.log(response);
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
@@ -653,17 +727,14 @@
                 });
             });
 
-
-
-
-            $('#add-model-form').on('submit', function (e) {
+            $('#add-model-form').on('submit', function(e) {
                 e.preventDefault();
                 var form = $(this);
                 $.ajax({
                     type: form.attr('method'),
                     url: form.attr('action'),
                     data: form.serialize(),
-                    success: function (response) {
+                    success: function(response) {
                         if (response.success) {
                             $('#addModelModal').modal('hide');
                             Swal.fire({
@@ -675,11 +746,11 @@
                             });
                         }
                     },
-                    error: function (response) {
+                    error: function(response) {
                         if (response.status === 422) {
                             var errors = response.responseJSON.errors;
                             var errorMessages = '';
-                            $.each(errors, function (key, value) {
+                            $.each(errors, function(key, value) {
                                 errorMessages += value[0] + '<br>';
                             });
                             Swal.fire({
@@ -688,7 +759,6 @@
                                 html: errorMessages,
                             });
                         } else {
-                            console.log(response);
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
@@ -698,11 +768,19 @@
                     }
                 });
             });
+
+            $('input[name="order_type"]').on('change', function() {
+                if ($(this).val() === 'agendar') {
+                    $('#scheduling').show();
+                } else {
+                    $('#scheduling').hide();
+                }
+            });
+
+            $('#name').on('input', function() {
+                $(this).val(capitalizarPrimeraLetra($(this).val()));
+            });
+
         });
     </script>
-
-
-
-
-
 @stop

@@ -1,9 +1,9 @@
 @extends('adminlte::page')
 
-@section('title', 'Asignar Mecánicos')
+@section('title', 'Asignar Líderes')
 
 @section('content_header')
-    <h1>Asignar Mecánicos</h1>
+    <h1>Asignar Líderes</h1>
 @stop
 
 @section('content')
@@ -11,7 +11,7 @@
     <div class="card">
         <div class="card-header">
             <div class="card-title">
-                <h5>Crear OT - Mecánicos</h5>
+                <h5>Crear OT - Líderes</h5>
             </div>
         </div>
         <div class="card-body">
@@ -68,7 +68,7 @@
                                         <thead>
                                             <tr>
                                                 <th>Servicio</th>
-                                                <th>Mecánico</th>
+                                                <th>Líder</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -77,9 +77,9 @@
                                                     <td>{{ $service->name }}</td>
                                                     <td>
                                                         <select name="mechanics[{{ $service->id }}]" class="form-control">
-                                                            <option value="">Seleccionar Mecánico</option>
-                                                            @foreach ($mechanics as $mechanic)
-                                                                <option value="{{ $mechanic->id }}">{{ $mechanic->name }}</option>
+                                                            <option value="">Seleccionar Líder</option>
+                                                            @foreach ($leaders as $leader)
+                                                                <option value="{{ $leader->id }}">{{ $leader->name }}</option>
                                                             @endforeach
                                                         </select>
                                                     </td>
@@ -91,11 +91,11 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-12">
-                                    <h4>Mecánicos y Servicios No Completados</h4>
+                                    <h4>Líderes y Servicios No Completados</h4>
                                     <table class="table table-striped">
                                         <thead>
                                             <tr>
-                                                <th>Mecánico</th>
+                                                <th>Líder</th>
                                                 <th>Servicios No Completados</th>
                                                 <th>Servicios Completados</th>
                                             </tr>
@@ -127,6 +127,11 @@
 </div>
 @stop
 
+@section('footer')
+
+    Realizado por <a href="https://www.slaymultimedios.com/"><strong>Slay Multimedios</strong></a> - Laravel v{{ Illuminate\Foundation\Application::VERSION }} (PHP v{{ PHP_VERSION }})<br>
+    &copy; 2024 PWRTALLER Versión 1.0. Todos los derechos reservados.
+@stop
 @section('css')
     <link rel="stylesheet" href="/css/admin_custom.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper@1.7.0/dist/css/bs-stepper.min.css">

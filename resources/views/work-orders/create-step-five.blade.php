@@ -22,6 +22,10 @@
                     </div>
                     <div class="row invoice-info">
                         <div class="col-sm-4 invoice-col">
+                            <img src="{{ asset('img/logopowercars_invoice.webp') }}" alt="Logo Powercars" class="img-fluid" style="max-height: 100px;">
+                            <p><b>Ejecutivo:</b> {{ $workOrder->createdBy->name ?? 'No asignado' }}</p>
+                        </div>
+                        <div class="col-sm-4 invoice-col">
                             Cliente
                             <address>
                                 <strong>{{ $client->name ?? 'N/A' }}</strong><br>
@@ -29,15 +33,19 @@
                                 Patente: {{ $vehicle->license_plate ?? 'N/A' }}<br>
                             </address>
                         </div>
-                        <div class="col-sm-4 invoice-col">
-                            <img src="{{ asset('img/logopowercars.webp') }}" alt="Logo Powercars" class="img-fluid"
-                                style="max-height: 100px;">
-                            <p><b>Ejecutivo:</b> {{ auth()->user()->name ?? 'N/A' }}</p>
-                        </div>
+
                         <div class="col-sm-4 invoice-col">
                             <b>OT ID:</b> {{ session('work_order_id', 'N/A') }}<br>
                             <b>Fecha de Ingreso:</b> {{ now()->format('d/m/Y H:i:s') }}<br>
-                            <b>Estado:</b> <span class="badge badge-warning" style="font-size: 1.2em;">En Proceso</span>
+                            <b>Estado:</b>
+                            @if (session('order_type') === 'cotizacion')
+                                <span class="badge badge-warning" style="font-size: 1.2em;">Cotización</span>
+                            @elseif(session('order_type') === 'agendar')
+                                <span class="badge badge-warning" style="font-size: 1.2em;">Agendado</span><br>
+                                <b>Fecha de Agendamiento:</b>  {{ \Carbon\Carbon::parse(session('scheduling'))->format('d/m/Y H:i:s') }}
+                            @else
+                                <span class="badge badge-warning" style="font-size: 1.2em;">Crear OT</span>
+                            @endif
                         </div>
                     </div>
 
@@ -49,7 +57,8 @@
                                 <thead>
                                     <tr>
                                         <th>Servicio</th>
-                                        <th>Mecánico Asignado</th>
+                                        <th>Usuario Asignado</th>
+                                        <th>Precio (con IVA)</th>
                                         <th>Estado</th>
                                     </tr>
                                 </thead>
@@ -57,9 +66,8 @@
                                     @foreach ($services as $service)
                                         <tr>
                                             <td>{{ $service->name }}</td>
-                                            <td>
-                                                {{ $mechanicNames[$mechanicAssignments[$service->id]] ?? 'N/A' }}
-                                            </td>
+                                            <td>{{ $mechanicNames[$mechanicAssignments[$service->id]] ?? 'N/A' }}</td>
+                                            <td>{{ number_format($service->price, 0, ',', '.') }} CLP</td>
                                             <td>
                                                 <span class="badge badge-info">Pendiente</span>
                                             </td>
@@ -79,57 +87,30 @@
                                     <tr>
                                         <th>Producto</th>
                                         <th>Cantidad</th>
+                                        <th>Precio Unitario (con IVA)</th>
+                                        <th>Descuento (%)</th>
+                                        <th>Precio Final</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($products as $product)
+                                        @php
+                                            $unitPrice = $product->price;
+                                            $quantity = $product->pivot->quantity;
+                                            $discount = $product->pivot->discount;
+                                            $discountedPrice = $unitPrice - ($unitPrice * ($discount / 100));
+                                            $finalPrice = $discountedPrice * $quantity;
+                                        @endphp
                                         <tr>
                                             <td>{{ $product->name ?? 'N/A' }}</td>
-                                            <td>{{ $productsQuantities[$product->id] ?? 'N/A' }}</td>
+                                            <td>{{ number_format($quantity, 0, ',', '.') }}</td>
+                                            <td>{{ number_format($unitPrice, 0, ',', '.') }} CLP</td>
+                                            <td>{{ $discount }}%</td>
+                                            <td>{{ number_format($finalPrice, 0, ',', '.') }} CLP</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
                             </table>
-                        </div>
-                    </div>
-
-                    <!-- Revisiones -->
-                    <div class="row">
-                        <div class="col-12 table-responsive">
-                            <h4>Revisiones</h4>
-                            <div id="accordion">
-                                @forelse ($revisions as $revision)
-                                    <div class="card">
-                                        <div class="card-header" id="heading{{ $revision->id }}">
-                                            <h5 class="mb-0">
-                                                <button class="btn btn-link" data-toggle="collapse"
-                                                    data-target="#collapse{{ $revision->id }}" aria-expanded="true"
-                                                    aria-controls="collapse{{ $revision->id }}">
-                                                    {{ $revision->name ?? 'N/A' }}
-                                                </button>
-                                            </h5>
-                                        </div>
-                                        <div id="collapse{{ $revision->id }}" class="collapse"
-                                            aria-labelledby="heading{{ $revision->id }}" data-parent="#accordion">
-                                            <div class="card-body">
-                                                <ul class="list-group">
-                                                    <li class="list-group-item">
-                                                        <span class="float-right">
-                                                            Los Fallos están con estatus buenos hasta que el mecánico los
-                                                            revise.
-                                                            <span class="badge badge-success"><i
-                                                                    class="fas fa-check-circle"></i></span>
-                                                        </span>
-                                                    </li>
-
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @empty
-                                    <p>No hay revisiones que hacer.</p>
-                                @endforelse
-                            </div>
                         </div>
                     </div>
 
@@ -140,36 +121,39 @@
                             @php
                                 use App\Helpers\CurrencyHelper;
 
-                                $subtotal =
+                                $subtotalWithTax =
                                     ($services ? $services->sum('price') : 0) +
                                     ($products
-                                        ? $products->sum(function ($product) use ($productsQuantities) {
-                                            return ($productsQuantities[$product->id] ?? 0) * $product->price;
+                                        ? $products->sum(function ($product) {
+                                            $unitPrice = $product->price;
+                                            $quantity = $product->pivot->quantity;
+                                            $discount = $product->pivot->discount;
+                                            $discountedPrice = $unitPrice - ($unitPrice * ($discount / 100));
+                                            return $discountedPrice * $quantity;
                                         })
                                         : 0);
 
-                                $discount_percentage = optional($client->clientGroup)->discount_percentage ?? 0;
-                                $discount = $subtotal * ($discount_percentage / 100);
-
-                                $tax = ($subtotal - $discount) * 0.19; // Assuming 19% tax rate
-                                $total = $subtotal - $discount + $tax;
+                                $discountPercentage = optional($client->clientGroup)->discount_percentage ?? 0;
+                                $discount = $subtotalWithTax * ($discountPercentage / 100);
+                                $totalWithoutTax = $subtotalWithTax / 1.19;
+                                $totalWithTax = $subtotalWithTax - $discount;
                             @endphp
                             <table class="table table-striped">
                                 <tr>
-                                    <th>Subtotal:</th>
-                                    <td>{{ CurrencyHelper::format($subtotal) }}</td>
+                                    <th>Subtotal (con IVA):</th>
+                                    <td>{{ number_format($subtotalWithTax, 0, ',', '.') }} CLP</td>
                                 </tr>
                                 <tr>
-                                    <th>Descuento ({{ $client->clientGroup->discount_percentage ?? '0' }}%):</th>
-                                    <td>{{ CurrencyHelper::format($discount) }}</td>
+                                    <th>Descuento ({{ $discountPercentage }}%):</th>
+                                    <td>{{ number_format($discount, 0, ',', '.') }} CLP</td>
                                 </tr>
                                 <tr>
-                                    <th>Impuesto (19%):</th>
-                                    <td>{{ CurrencyHelper::format($tax) }}</td>
+                                    <th>Total (sin IVA):</th>
+                                    <td>{{ number_format($totalWithoutTax, 0, ',', '.') }} CLP</td>
                                 </tr>
                                 <tr>
-                                    <th>Total:</th>
-                                    <td>{{ CurrencyHelper::format($total) }}</td>
+                                    <th>Total (con IVA):</th>
+                                    <td>{{ number_format($totalWithTax, 0, ',', '.') }} CLP</td>
                                 </tr>
                             </table>
                         </div>
@@ -186,31 +170,36 @@
                                 <input type="hidden" name="entry_mileage" value="{{ $entry_mileage ?? 0 }}">
 
                                 @foreach ($services as $service)
-                                    <input type="hidden" name="services[{{ $loop->index }}][id]"
-                                        value="{{ $service->id }}">
-                                    <input type="hidden" name="services[{{ $loop->index }}][mechanic_id]"
-                                        value="{{ session('mechanic_assignments')[$service->id] ?? 0 }}">
+                                    <input type="hidden" name="services[{{ $loop->index }}][id]" value="{{ $service->id }}">
+                                    <input type="hidden" name="services[{{ $loop->index }}][mechanic_id]" value="{{ session('mechanic_assignments')[$service->id] ?? 0 }}">
                                 @endforeach
 
                                 @foreach ($products as $product)
-                                    <input type="hidden" name="products[{{ $loop->index }}][id]"
-                                        value="{{ $product->id }}">
-                                    <input type="hidden" name="products[{{ $loop->index }}][quantity]"
-                                        value="{{ $productsQuantities[$product->id] ?? 0 }}">
+                                    <input type="hidden" name="products[{{ $loop->index }}][id]" value="{{ $product->id }}">
+                                    <input type="hidden" name="products[{{ $loop->index }}][quantity]" value="{{ $product->pivot->quantity }}">
+                                    <input type="hidden" name="products[{{ $loop->index }}][discount]" value="{{ $product->pivot->discount }}">
                                 @endforeach
 
                                 @foreach ($revisions as $revision)
-                                    <input type="hidden" name="revisions[{{ $loop->index }}][id]"
-                                        value="{{ $revision->id }}">
+                                    <input type="hidden" name="revisions[{{ $loop->index }}][id]" value="{{ $revision->id }}">
                                     @foreach ($revision->faults as $fault)
-                                        <input type="hidden"
-                                            name="revisions[{{ $loop->parent->index }}][faults][{{ $loop->index }}][id]"
-                                            value="{{ $fault->id }}">
+                                        <input type="hidden" name="revisions[{{ $loop->index }}][faults][{{ $loop->index }}][id]" value="{{ $fault->id }}">
                                     @endforeach
                                 @endforeach
 
+                                @if (session('order_type') === 'agendar')
+                                <input type="hidden" name="scheduling" value="{{ session('scheduling') }}">
+                                @endif
+
                                 <button type="submit" class="btn btn-primary float-right" style="margin-right: 10px;">
-                                    <i class="fas fa-check"></i> Crear Orden de Trabajo
+                                    <i class="fas fa-check"></i>
+                                    @if (session('order_type') === 'cotizacion')
+                                        Crear Cotización
+                                    @elseif(session('order_type') === 'agendar')
+                                        Crear Agendamiento
+                                    @else
+                                        Crear Orden de Trabajo
+                                    @endif
                                 </button>
                                 <a href="{{ route('work-orders.create-step-four') }}" class="btn btn-default float-right" style="margin-right: 10px;">
                                     <i class="fas fa-arrow-left"></i> Volver a Asignar Mecánicos
@@ -224,7 +213,11 @@
         </div>
     </div>
 @stop
+@section('footer')
 
+    Realizado por <a href="https://www.slaymultimedios.com/"><strong>Slay Multimedios</strong></a> - Laravel v{{ Illuminate\Foundation\Application::VERSION }} (PHP v{{ PHP_VERSION }})<br>
+    &copy; 2024 PWRTALLER Versión 1.0. Todos los derechos reservados.
+@stop
 @section('css')
     <link rel="stylesheet" href="/css/admin_custom.css">
 @stop

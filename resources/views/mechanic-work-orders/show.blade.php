@@ -22,6 +22,10 @@
 
                     <div class="row invoice-info">
                         <div class="col-sm-4 invoice-col">
+                            <img src="{{ asset('img/logopowercars_invoice.webp') }}" alt="Logo Powercars" class="img-fluid" style="max-height: 100px;">
+                            <p><b>Ejecutivo:</b> {{ $workOrder->createdBy->name ?? 'No asignado' }}</p>
+                        </div>
+                        <div class="col-sm-4 invoice-col">
                             Cliente
                             <address>
                                 <strong>{{ $workOrder->client->name }}</strong><br>
@@ -30,11 +34,7 @@
                             </address>
                         </div>
 
-                        <div class="col-sm-4 invoice-col">
-                            <img src="{{ asset('img/logopowercars.webp') }}" alt="Logo Powercars" class="img-fluid"
-                                style="max-height: 100px;">
-                            <p><b>Ejecutivo:</b> {{ $workOrder->createdBy->name ?? 'No asignado' }}</p>
-                        </div>
+
 
                         <div class="col-sm-4 invoice-col">
                             <b>OT ID:</b> {{ $workOrder->id }}<br>
@@ -74,7 +74,7 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                @if ($service->pivot->mechanic_id == auth()->user()->id)
+                                                @if ($workOrder->status !== 'Facturado' && $service->pivot->mechanic_id == auth()->user()->id)
                                                     <form class="update-status-form" action="{{ route('mechanic-work-orders.update-status', [$workOrder->id, $service->id]) }}" method="POST">
                                                         @csrf
                                                         @method('PUT')
@@ -150,14 +150,20 @@
                                                     @foreach ($revision->faults as $fault)
                                                         <li class="list-group-item d-flex justify-content-between align-items-center">
                                                             {{ $fault->fallo }}
-                                                            <form class="update-fault-status-form" action="{{ route('mechanic-work-orders.update-fault-status', [$workOrder->id, $revision->id, $fault->id]) }}" method="POST">
-                                                                @csrf
-                                                                @method('PUT')
-                                                                <select name="status" class="form-control revision-status">
-                                                                    <option value="1" {{ $fault->pivot->status == 1 ? 'selected' : '' }}>Bueno</option>
-                                                                    <option value="0" {{ $fault->pivot->status == 0 ? 'selected' : '' }}>Malo</option>
-                                                                </select>
-                                                            </form>
+                                                            @if ($workOrder->status !== 'Facturado')
+                                                                <form class="update-fault-status-form" action="{{ route('mechanic-work-orders.update-fault-status', [$workOrder->id, $revision->id, $fault->id]) }}" method="POST">
+                                                                    @csrf
+                                                                    @method('PUT')
+                                                                    <select name="status" class="form-control revision-status">
+                                                                        <option value="1" {{ $fault->status == 1 ? 'selected' : '' }}>Bueno</option>
+                                                                        <option value="0" {{ $fault->status == 0 ? 'selected' : '' }}>Malo</option>
+                                                                    </select>
+                                                                </form>
+                                                            @else
+                                                                <span class="badge {{ $fault->status == 1 ? 'badge-success' : 'badge-danger' }}">
+                                                                    {{ $fault->status == 1 ? 'Bueno' : 'Malo' }}
+                                                                </span>
+                                                            @endif
                                                         </li>
                                                     @endforeach
                                                 </ul>
@@ -211,6 +217,11 @@
                             <a href="{{ route('mechanic-work-orders.index') }}" class="btn btn-default">
                                 <i class="fas fa-arrow-left"></i> Volver a la Lista
                             </a>
+                            @if ($workOrder->status !== 'Facturado')
+                                <button type="button" class="btn btn-warning float-right mb-2 mr-2" data-toggle="modal" data-target="#updateVehicleModal">
+                                    Actualizar datos del vehículo
+                                </button>
+                            @endif
                         </div>
                     </div>
 
@@ -220,42 +231,101 @@
     </div>
 
     <!-- Modal para agregar incidencia -->
-    <div class="modal fade" id="addIncidentModal" tabindex="-1" role="dialog" aria-labelledby="addIncidentModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <form action="{{ route('mechanic-work-orders.add-incident', $workOrder->id) }}" method="POST">
-                    @csrf
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="addIncidentModalLabel">Agregar Incidencia</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label for="incident_id">Incidencia</label>
-                            <select name="incident_id" class="form-control" required>
-                                <option value="">Seleccione una incidencia</option>
-                                @foreach ($incidents as $incident)
-                                    <option value="{{ $incident->id }}">{{ $incident->name }}</option>
-                                @endforeach
-                            </select>
+    @if ($workOrder->status !== 'Facturado')
+        <div class="modal fade" id="addIncidentModal" tabindex="-1" role="dialog" aria-labelledby="addIncidentModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <form action="{{ route('mechanic-work-orders.add-incident', $workOrder->id) }}" method="POST">
+                        @csrf
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="addIncidentModalLabel">Agregar Incidencia</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
                         </div>
-                        <div class="form-group">
-                            <label for="observation">Observación</label>
-                            <textarea name="observation" class="form-control" rows="3" required></textarea>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="incident_id">Incidencia</label>
+                                <select name="incident_id" class="form-control" required>
+                                    <option value="">Seleccione una incidencia</option>
+                                    @foreach ($incidents as $incident)
+                                        <option value="{{ $incident->id }}">{{ $incident->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="observation">Observación</label>
+                                <textarea name="observation" class="form-control" rows="3" required></textarea>
+                            </div>
                         </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Guardar</button>
-                    </div>
-                </form>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Guardar</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
-    </div>
-@stop
+    @endif
 
+    <!-- Modal para actualizar datos del vehículo -->
+    @if ($workOrder->status !== 'Facturado')
+        <div class="modal fade" id="updateVehicleModal" tabindex="-1" role="dialog" aria-labelledby="updateVehicleModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <form action="{{ route('vehicles.update', $workOrder->vehicle->id) }}" method="POST" enctype="multipart/form-data">
+                        @csrf
+                        @method('PUT')
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="updateVehicleModalLabel">Actualizar datos del vehículo</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="color">Color</label>
+                                <input type="text" name="color" class="form-control" value="{{ $workOrder->vehicle->color }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="chassis">Chasis</label>
+                                <input type="text" name="chassis" class="form-control" value="{{ $workOrder->vehicle->chassis }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="kilometers">Kilómetros</label>
+                                <input type="number" name="kilometers" class="form-control" value="{{ $workOrder->vehicle->kilometers }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="registration_date">Fecha de Registro</label>
+                                <input type="date" name="registration_date" class="form-control" value="{{ $workOrder->vehicle->registration_date ? $workOrder->vehicle->registration_date->format('Y-m-d') : '' }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="photo">Foto del vehículo</label>
+                                <input type="file" name="photo" class="form-control-file">
+                                @if($workOrder->vehicle->photo)
+                                    <img src="{{ asset('storage/' . $workOrder->vehicle->photo) }}" alt="Foto del vehículo" class="img-fluid mt-2" style="max-height: 200px;">
+                                @endif
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                            <button type="submit" class="btn btn-primary">Actualizar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
+
+@stop
+@section('footer')
+
+    Realizado por <a href="https://www.slaymultimedios.com/"><strong>Slay Multimedios</strong></a> - Laravel v{{ Illuminate\Foundation\Application::VERSION }} (PHP v{{ PHP_VERSION }})<br>
+    &copy; 2024 PWRTALLER Versión 1.0. Todos los derechos reservados.
+@stop
+@section('css')
+    <link rel="stylesheet" href="/css/admin_custom.css">
+@stop
 @section('js')
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

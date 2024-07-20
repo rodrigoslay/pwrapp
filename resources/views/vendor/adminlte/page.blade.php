@@ -42,7 +42,8 @@
         </div><!-- /.content-wrapper -->
 
         {{-- Control Sidebar --}}
-        @include('adminlte::partials.sidebar.right-sidebar')
+       @include('adminlte::partials.sidebar.right-sidebar')
+       @include('chat.right-sidebar')
 
         {{-- Main Footer --}}
         @include('adminlte::partials.footer.footer')

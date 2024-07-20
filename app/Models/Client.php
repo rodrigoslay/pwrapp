@@ -23,11 +23,14 @@ class Client extends Model
         'status',
     ];
 
+    /**
+     * Get the vehicles owned by the client.
+     */
     public function vehicles()
     {
-        return $this->belongsToMany(Vehicle::class, 'client_vehicle')
-                    ->withTimestamps();
+        return $this->hasMany(Vehicle::class);
     }
+
     /**
      * Get the client group that the client belongs to.
      */
@@ -35,5 +38,4 @@ class Client extends Model
     {
         return $this->belongsTo(ClientGroup::class);
     }
-    
-}
+};
